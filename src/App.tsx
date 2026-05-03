@@ -1,6 +1,16 @@
 import { useEffect, useRef, useState } from 'react'
+import { exportPixelSize } from './highResCapture'
 import { Scene } from './Scene'
 import { useStore } from './store'
+
+type ExportPreset = 'screen' | 1920 | 3840 | 7680
+
+const EXPORT_PRESETS: { id: ExportPreset; label: string; hint: string }[] = [
+  { id: 'screen', label: 'Pantalla', hint: 'rápido, tamaño del visor' },
+  { id: 1920, label: '1080p', hint: 'lado largo 1920 px' },
+  { id: 3840, label: '4K', hint: 'lado largo 3840 px' },
+  { id: 7680, label: '8K', hint: 'lado largo 7680 px' },
+]
 
 const DEVICE_SWATCHES = ['#1a1a1a', '#e8e8e8', '#1e3a5f', '#8b2222', '#c9a227', '#b4b8c0'] as const
 const BG_SWATCHES = ['#0a0a0a', '#ffffff', '#0f172a', '#14532d', '#5c4033', '#f4f4f5'] as const
@@ -22,12 +32,28 @@ export default function App() {
     setAutoRotate,
     setUiTheme,
     setCameraRoll,
+    toggleCameraPanFree,
   } = useStore()
   const [exporting, setExporting] = useState(false)
+  const [exportPreset, setExportPreset] = useState<ExportPreset>(3840)
+  const [exportError, setExportError] = useState<string | null>(null)
 
   useEffect(() => {
     document.documentElement.dataset.theme = uiTheme
   }, [uiTheme])
+
+  useEffect(() => {
+    function onKeyDown(e: KeyboardEvent) {
+      if (e.defaultPrevented) return
+      const el = e.target as HTMLElement | null
+      if (el?.closest('input, textarea, select, [contenteditable="true"]')) return
+      if (e.key !== 'h' && e.key !== 'H') return
+      e.preventDefault()
+      toggleCameraPanFree()
+    }
+    window.addEventListener('keydown', onKeyDown)
+    return () => window.removeEventListener('keydown', onKeyDown)
+  }, [toggleCameraPanFree])
 
   async function onUpload(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0]
@@ -64,15 +90,41 @@ export default function App() {
   }
 
   function exportPNG() {
+    setExportError(null)
     setExporting(true)
     requestAnimationFrame(() => {
-      const canvas = document.querySelector('canvas') as HTMLCanvasElement | null
-      if (!canvas) return setExporting(false)
-      const link = document.createElement('a')
-      link.download = `mockit-${Date.now()}.png`
-      link.href = canvas.toDataURL('image/png')
-      link.click()
-      setExporting(false)
+      try {
+        const canvas = document.querySelector('canvas') as HTMLCanvasElement | null
+        if (!canvas) {
+          setExportError('No se encontró el lienzo 3D.')
+          return
+        }
+        const capture = useStore.getState().captureSceneAtSize
+        let dataUrl: string
+        if (exportPreset !== 'screen' && capture) {
+          const { w, h } = exportPixelSize(exportPreset, canvas.clientWidth, canvas.clientHeight)
+          const gl = canvas.getContext('webgl2') ?? canvas.getContext('webgl')
+          if (gl) {
+            const maxTex = gl.getParameter(gl.MAX_TEXTURE_SIZE) as number
+            if (w > maxTex || h > maxTex) {
+              setExportError(`Esta GPU admite como mucho ${maxTex}px por lado. Elige otra resolución.`)
+              return
+            }
+          }
+          dataUrl = capture(w, h)
+        } else {
+          dataUrl = canvas.toDataURL('image/png')
+        }
+        const link = document.createElement('a')
+        link.download = `mockit-${Date.now()}.png`
+        link.href = dataUrl
+        link.click()
+      } catch (err) {
+        console.error(err)
+        setExportError('No se pudo exportar. Prueba “Pantalla” o una resolución menor.')
+      } finally {
+        setExporting(false)
+      }
     })
   }
 
@@ -112,7 +164,7 @@ export default function App() {
           className="pointer-events-none absolute bottom-4 left-5 select-none font-script text-[1.15rem] md:text-[1.25rem]"
           style={{ color: 'var(--mockit-script)' }}
         >
-          drag to orbit · scroll to zoom
+          arrastra: órbita · rueda: zoom · H: modo desplazar XY (mano: arrastra con clic principal) · H otra vez: salir
         </p>
 
         <aside
@@ -228,6 +280,37 @@ export default function App() {
             </Field>
 
             <div className="pt-1">
+              <p
+                className="mb-2 text-[10px] font-semibold uppercase tracking-[0.22em]"
+                style={{ color: 'var(--mockit-text-muted)' }}
+              >
+                Export resolution
+              </p>
+              <div className="mb-3 grid grid-cols-2 gap-2">
+                {EXPORT_PRESETS.map(({ id, label }) => {
+                  const on = exportPreset === id
+                  return (
+                    <button
+                      key={String(id)}
+                      type="button"
+                      onClick={() => {
+                        setExportPreset(id)
+                        setExportError(null)
+                      }}
+                      className={`rounded-lg border px-2 py-2 text-xs transition ${
+                        on
+                          ? 'border-[var(--mockit-accent-bright)] bg-[var(--mockit-accent)]/15 text-[var(--mockit-text)]'
+                          : 'border-[color-mix(in_srgb,var(--mockit-text)_18%,transparent)] hover:border-[var(--mockit-accent)]/50'
+                      }`}
+                    >
+                      {label}
+                    </button>
+                  )
+                })}
+              </div>
+              <p className="mb-3 text-[11px] leading-snug opacity-80" style={{ color: 'var(--mockit-text-muted)' }}>
+                {EXPORT_PRESETS.find((p) => p.id === exportPreset)?.hint}. Misma composición que el visor; PNG sin pérdida.
+              </p>
               <button
                 type="button"
                 onClick={exportPNG}
@@ -240,6 +323,11 @@ export default function App() {
               >
                 {exporting ? 'Exporting…' : 'Export PNG'}
               </button>
+              {exportError && (
+                <p className="mt-2 text-center text-xs leading-relaxed text-amber-600 dark:text-amber-400/90">
+                  {exportError}
+                </p>
+              )}
               <p className="mt-2 font-script text-center text-[0.95rem] opacity-70" style={{ color: 'var(--mockit-script)' }}>
                 No watermark — reframe before export
               </p>

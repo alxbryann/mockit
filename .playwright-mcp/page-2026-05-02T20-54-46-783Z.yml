@@ -1,0 +1,48 @@
+- generic [ref=e3]:
+  - banner [ref=e4]:
+    - generic [ref=e5]:
+      - img [ref=e6]
+      - generic [ref=e9]: mockit
+    - button "Activar tema claro" [ref=e10] [cursor=pointer]:
+      - generic [ref=e13]: light
+  - generic [ref=e14]:
+    - paragraph: "arrastra: órbita · rueda: zoom · H: modo desplazar XY (mano: arrastra con clic principal) · H otra vez: salir"
+    - complementary [ref=e18]:
+      - generic [ref=e19]:
+        - button "+ upload screenshot" [ref=e20] [cursor=pointer]:
+          - generic [ref=e21]: + upload screenshot
+        - generic [ref=e22]:
+          - heading "Device color" [level=2] [ref=e23]
+          - generic [ref=e24]:
+            - 'button "Color #1a1a1a" [ref=e25]'
+            - 'button "Color #e8e8e8" [ref=e26]'
+            - 'button "Color #1e3a5f" [ref=e27]'
+            - 'button "Color #8b2222" [ref=e28]'
+            - 'button "Color #c9a227" [ref=e29]'
+            - 'button "Color #b4b8c0" [ref=e30]'
+        - generic [ref=e31]:
+          - heading "Background" [level=2] [ref=e32]
+          - generic [ref=e33]:
+            - 'button "Color #0a0a0a" [ref=e34]'
+            - 'button "Color #ffffff" [ref=e35]'
+            - 'button "Color #0f172a" [ref=e36]'
+            - 'button "Color #14532d" [ref=e37]'
+            - 'button "Color #5c4033" [ref=e38]'
+            - 'button "Color #f4f4f5" [ref=e39]'
+        - generic [ref=e40]:
+          - generic [ref=e41]: auto-rotate
+          - switch [checked] [ref=e42]
+        - generic [ref=e45]:
+          - heading "Camera roll" [level=2] [ref=e46]
+          - paragraph [ref=e47]: Gira la vista alrededor del eje de la cámara. Combina con arrastrar la escena.
+          - generic [ref=e48]:
+            - button "0°" [ref=e49]
+            - button "90°" [ref=e50]
+            - button "180°" [ref=e51]
+            - button "270°" [ref=e52]
+          - generic [ref=e53]:
+            - generic [ref=e54]: 0°
+            - slider "0°" [ref=e55]: "0"
+        - generic [ref=e56]:
+          - button "Export PNG" [ref=e57] [cursor=pointer]
+          - paragraph [ref=e58]: No watermark — reframe before export
