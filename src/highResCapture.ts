@@ -31,13 +31,30 @@ function readRenderTargetAsPng(
  * Renders one frame to an offscreen target at `width` × `height` (same framing as
  * the live view when aspect matches the current canvas).
  */
+export type CaptureSceneOptions = {
+  /** Opaque studio background vs alpha so the PNG can be composited */
+  transparent?: boolean
+}
+
 export function captureSceneToPngDataUrl(
   gl: THREE.WebGLRenderer,
   scene: THREE.Scene,
   camera: THREE.PerspectiveCamera,
   width: number,
   height: number,
+  options?: CaptureSceneOptions,
 ): string {
+  const transparent = options?.transparent === true
+  const prevBg = scene.background
+  const prevClearColor = new THREE.Color()
+  gl.getClearColor(prevClearColor)
+  const prevClearAlpha = gl.getClearAlpha()
+
+  if (transparent) {
+    scene.background = null
+    gl.setClearColor(0x000000, 0)
+  }
+
   const rt = new THREE.WebGLRenderTarget(width, height, {
     minFilter: THREE.LinearFilter,
     magFilter: THREE.LinearFilter,
@@ -53,15 +70,19 @@ export function captureSceneToPngDataUrl(
 
   const prevTarget = gl.getRenderTarget()
   const prevXR = gl.xr.enabled
-  gl.xr.enabled = false
-  gl.setRenderTarget(rt)
-  gl.render(scene, exportCam)
-  gl.setRenderTarget(prevTarget)
-  gl.xr.enabled = prevXR
-
   try {
+    gl.xr.enabled = false
+    gl.setRenderTarget(rt)
+    gl.render(scene, exportCam)
+    gl.setRenderTarget(prevTarget)
+    gl.xr.enabled = prevXR
+
     return readRenderTargetAsPng(gl, rt, width, height)
   } finally {
+    if (transparent) {
+      scene.background = prevBg
+      gl.setClearColor(prevClearColor, prevClearAlpha)
+    }
     rt.dispose()
   }
 }

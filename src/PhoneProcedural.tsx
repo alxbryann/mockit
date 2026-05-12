@@ -50,9 +50,9 @@ function useFramePhysicalMaterial(deviceColor: string): FramePhysicalProps {
         normalScale: normalDark,
         anisotropy: 0,
         anisotropyRotation: 0,
-        clearcoat: 0.05,
-        clearcoatRoughness: 0.85,
-        envMapIntensity: 1.25,
+        clearcoat: 0.04,
+        clearcoatRoughness: 0.88,
+        envMapIntensity: 1.12,
       }
     }
 
@@ -60,7 +60,7 @@ function useFramePhysicalMaterial(deviceColor: string): FramePhysicalProps {
     const starlightLike = lum > 0.58 && sat < 0.12
     const metalness = starlightLike ? 0.93 : 0.89
     const roughness = Math.min(0.52, starlightLike ? 0.38 : 0.44 + (1 - lum) * 0.05)
-    const envMapIntensity = starlightLike ? 1.52 : 1.24
+    const envMapIntensity = starlightLike ? 1.36 : 1.18
 
     return {
       color: deviceColor,
@@ -71,8 +71,8 @@ function useFramePhysicalMaterial(deviceColor: string): FramePhysicalProps {
       normalScale: normalBrushed,
       anisotropy: 0,
       anisotropyRotation: 0,
-      clearcoat: 0.055,
-      clearcoatRoughness: 0.72,
+      clearcoat: 0.042,
+      clearcoatRoughness: 0.76,
       envMapIntensity,
     }
   }, [deviceColor, normalDark, normalBrushed])
@@ -170,6 +170,14 @@ function CameraLens({ position }: { position: [number, number, number] }) {
   )
 }
 
+/** Compact square camera bump — top-left corner, iPhone 16 Pro layout. */
+const CAM_BUMP_W = 3.05
+const CAM_BUMP_H = 3.05
+/** Group origin at bump center; bump placed in top-left area of the back. */
+const CAM_BUMP_CX = -W / 2 + 1.98
+const CAM_BUMP_CY = H / 2 - 2.36
+const CAM_BUMP_Z = -D / 2
+
 function CameraModule({
   frameMat,
   deviceColor,
@@ -177,51 +185,54 @@ function CameraModule({
   frameMat: FramePhysicalProps
   deviceColor: string
 }) {
+  const hw = CAM_BUMP_W / 2
+  const hh = CAM_BUMP_H / 2
+
   return (
-    <group position={[-W / 2 + 1.85, H / 2 - 2.4, -D / 2]}>
-      {/* Plateau in device color (Pro look) — glassy back-glass material */}
+    <group position={[CAM_BUMP_CX, CAM_BUMP_CY, CAM_BUMP_Z]}>
+      {/* Frosted glass plateau in device color */}
       <RoundedBox
-        args={[2.85, 2.85, 0.32]}
-        radius={0.55}
+        args={[CAM_BUMP_W - 0.06, CAM_BUMP_H - 0.06, 0.33]}
+        radius={0.54}
         smoothness={6}
-        position={[0, 0, -0.16]}
+        position={[0, 0, -0.165]}
         castShadow
       >
         <meshPhysicalMaterial
           color={deviceColor}
-          metalness={0.18}
-          roughness={0.5}
-          clearcoat={0.55}
-          clearcoatRoughness={0.3}
-          envMapIntensity={1.1}
+          metalness={0.16}
+          roughness={0.52}
+          clearcoat={0.48}
+          clearcoatRoughness={0.32}
+          envMapIntensity={1.05}
         />
       </RoundedBox>
-      {/* Metal rim around plateau (between plateau and back of phone) */}
+      {/* Metal rim ring around the bump */}
       <RoundedBox
-        args={[2.9, 2.9, 0.05]}
+        args={[CAM_BUMP_W, CAM_BUMP_H, 0.055]}
         radius={0.56}
         smoothness={6}
         position={[0, 0, -0.025]}
       >
         <meshPhysicalMaterial
           {...frameMat}
-          roughness={frameMat.roughness * 0.85}
-          clearcoat={frameMat.clearcoat * 1.2}
+          roughness={frameMat.roughness * 0.82}
+          clearcoat={frameMat.clearcoat * 1.15}
         />
       </RoundedBox>
 
-      {/* Three lenses sticking out the back (-Z) */}
-      <CameraLens position={[-0.75, 0.75, -0.34]} />
-      <CameraLens position={[0.75, 0.75, -0.34]} />
-      <CameraLens position={[-0.75, -0.75, -0.34]} />
+      {/* Triangular lens layout: two stacked on left, one on right */}
+      <CameraLens position={[-hw + 0.82, hh - 0.80, -0.34]} />
+      <CameraLens position={[-hw + 0.82, -hh + 0.82, -0.34]} />
+      <CameraLens position={[hw - 0.88, 0.02, -0.34]} />
 
-      {/* Flash (LED) */}
-      <group position={[0.75, -0.85, -0.32]}>
+      {/* Flash — top-right */}
+      <group position={[hw - 0.40, hh - 0.40, -0.32]}>
         <mesh rotation={[Math.PI / 2, 0, 0]}>
-          <cylinderGeometry args={[0.21, 0.21, 0.06, 32]} />
+          <cylinderGeometry args={[0.21, 0.21, 0.055, 32]} />
           <meshPhysicalMaterial color="#1b1c1f" metalness={0.5} roughness={0.4} />
         </mesh>
-        <mesh position={[0, 0, -0.035]}>
+        <mesh position={[0, 0, -0.033]}>
           <circleGeometry args={[0.13, 32]} />
           <meshPhysicalMaterial
             color="#fff5e0"
@@ -234,14 +245,14 @@ function CameraModule({
         </mesh>
       </group>
 
-      {/* LiDAR sensor (smaller, dark) */}
-      <group position={[0.18, -0.85, -0.32]}>
+      {/* LiDAR — bottom-right */}
+      <group position={[hw - 0.52, -hh + 0.50, -0.32]}>
         <mesh rotation={[Math.PI / 2, 0, 0]}>
-          <cylinderGeometry args={[0.16, 0.16, 0.05, 32]} />
+          <cylinderGeometry args={[0.16, 0.16, 0.048, 32]} />
           <meshPhysicalMaterial color="#16171a" metalness={0.4} roughness={0.45} />
         </mesh>
-        <mesh position={[0, 0, -0.03]}>
-          <circleGeometry args={[0.11, 32]} />
+        <mesh position={[0, 0, -0.028]}>
+          <circleGeometry args={[0.10, 32]} />
           <meshPhysicalMaterial
             color="#0a0a0c"
             metalness={0.3}
@@ -255,25 +266,57 @@ function CameraModule({
 }
 
 function BackPanel({ deviceColor }: { deviceColor: string }) {
-  const shape = useMemo(
-    () => roundedRectShape(W - 0.04, H - 0.04, CORNER - 0.02),
-    [],
+  const { frostHex, darkHex } = useMemo(() => {
+    const c = new THREE.Color(deviceColor)
+    const lum = c.r * 0.299 + c.g * 0.587 + c.b * 0.114
+    const frost = c.clone().lerp(new THREE.Color('#f4f4f5'), lum < 0.28 ? 0.16 : 0.08)
+    const dark = c.clone().multiplyScalar(lum > 0.52 ? 0.46 : lum > 0.38 ? 0.52 : 0.64)
+    return { frostHex: `#${frost.getHexString()}`, darkHex: `#${dark.getHexString()}` }
+  }, [deviceColor])
+
+  const fullShape = useMemo(() => roundedRectShape(W - 0.04, H - 0.04, CORNER - 0.02), [])
+  const marginY = 0.16
+  const darkTop = H / 2 - 2.94
+  const darkBottom = -H / 2 + marginY
+  const darkH = darkTop - darkBottom
+  const darkW = W - 0.2
+  const darkCy = (darkTop + darkBottom) / 2
+  const darkShape = useMemo(
+    () => roundedRectShape(darkW, darkH, Math.max(0.28, CORNER - 0.12)),
+    [darkH, darkW],
   )
+
+  const glass = {
+    metalness: 0.14,
+    roughness: 0.54,
+    clearcoat: 0.44,
+    clearcoatRoughness: 0.34,
+    envMapIntensity: 1.02,
+  }
+
   return (
-    <mesh position={[0, 0, -D / 2 - 0.008]} rotation={[0, Math.PI, 0]}>
-      <shapeGeometry args={[shape, 64]} />
-      <meshPhysicalMaterial
-        color={deviceColor}
-        metalness={0.18}
-        roughness={0.5}
-        clearcoat={0.55}
-        clearcoatRoughness={0.3}
-        envMapIntensity={1.1}
-        polygonOffset
-        polygonOffsetFactor={-1}
-        polygonOffsetUnits={-1}
-      />
-    </mesh>
+    <group>
+      <mesh position={[0, 0, -D / 2 - 0.013]} rotation={[0, Math.PI, 0]}>
+        <shapeGeometry args={[fullShape, 64]} />
+        <meshPhysicalMaterial
+          color={frostHex}
+          {...glass}
+          polygonOffset
+          polygonOffsetFactor={-1}
+          polygonOffsetUnits={-1}
+        />
+      </mesh>
+      <mesh position={[0, darkCy, -D / 2 - 0.007]} rotation={[0, Math.PI, 0]}>
+        <shapeGeometry args={[darkShape, 64]} />
+        <meshPhysicalMaterial
+          color={darkHex}
+          {...glass}
+          polygonOffset
+          polygonOffsetFactor={-2}
+          polygonOffsetUnits={-1}
+        />
+      </mesh>
+    </group>
   )
 }
 
@@ -332,6 +375,60 @@ function SideButton({
   )
 }
 
+/** iPhone 16 Pro: pastilla capacitiva ligeramente hundida respecto al power. */
+function RecessedCameraControl({ frameMat }: { frameMat: FramePhysicalProps }) {
+  const thick = 0.048
+  const x = W / 2 - thick / 2 + 0.001
+  const y = H / 2 - 5.42
+  return (
+    <RoundedBox
+      args={[thick, 0.69, D * 0.4]}
+      radius={0.08}
+      smoothness={4}
+      position={[x, y, 0.022]}
+      castShadow
+    >
+      <meshPhysicalMaterial
+        {...frameMat}
+        roughness={Math.min(0.96, frameMat.roughness * 1.38)}
+        clearcoat={frameMat.clearcoat * 0.32}
+        envMapIntensity={frameMat.envMapIntensity * 0.76}
+        polygonOffset
+        polygonOffsetFactor={2}
+        polygonOffsetUnits={2}
+      />
+    </RoundedBox>
+  )
+}
+
+/** Líneas de antena horizontales en los cantos (vista lateral). */
+function AntennaBands() {
+  const ys = [H / 2 - 0.42, -H / 2 + 0.42]
+  return (
+    <group>
+      {ys.flatMap((y) =>
+        (['left', 'right'] as const).map((side) => (
+          <mesh
+            key={`${side}-${y}`}
+            position={[side === 'left' ? -W / 2 + 0.038 : W / 2 - 0.038, y, 0]}
+            castShadow
+          >
+            <boxGeometry args={[0.072, 0.034, D * 0.9]} />
+            <meshPhysicalMaterial
+              color="#5f636b"
+              metalness={0.62}
+              roughness={0.48}
+              clearcoat={0.12}
+              clearcoatRoughness={0.75}
+              envMapIntensity={0.48}
+            />
+          </mesh>
+        )),
+      )}
+    </group>
+  )
+}
+
 function BottomDetails() {
   // USB-C cutout — pill shape
   const usbcShape = useMemo(() => {
@@ -374,6 +471,14 @@ function BottomDetails() {
         <meshBasicMaterial color="#16181c" side={THREE.DoubleSide} />
       </mesh>
 
+      {/* Microphones flanking USB-C */}
+      {[-0.52, 0.52].map((mx) => (
+        <mesh key={`mic-${mx}`} position={[mx, yBottom, 0]} rotation={[Math.PI / 2, 0, 0]}>
+          <circleGeometry args={[0.038, 20]} />
+          <meshBasicMaterial color="#0a0a0c" side={THREE.DoubleSide} />
+        </mesh>
+      ))}
+
       {/* Speaker grille right (along X, at z=0 — flush with body) */}
       {speakerOffsets.map((x) => (
         <mesh key={`r-${x}`} position={[x, yBottom, 0]} rotation={[Math.PI / 2, 0, 0]}>
@@ -392,7 +497,7 @@ function BottomDetails() {
   )
 }
 
-export function Phone() {
+export function PhoneProcedural() {
   const { screenshot, deviceColor } = useStore()
   const frameMat = useFramePhysicalMaterial(deviceColor)
 
@@ -440,36 +545,38 @@ export function Phone() {
       </mesh>
       <CameraModule frameMat={frameMat} deviceColor={deviceColor} />
 
-      {/* Lateral izquierdo: acción (pastilla corta, no “botón redondo” diminuto) + volumen ± */}
+      <AntennaBands />
+
+      {/* Izquierda: Action corta + volumen ± */}
       <SideButton
         frameMat={frameMat}
         side="left"
-        variant="long"
-        y={H / 2 - 2.02}
-        length={0.62}
+        variant="compact"
+        y={H / 2 - 1.9}
+        length={0.38}
       />
       <SideButton
         frameMat={frameMat}
         side="left"
         variant="long"
-        y={H / 2 - 3.38}
-        length={1.05}
+        y={H / 2 - 3.34}
+        length={1.06}
       />
       <SideButton
         frameMat={frameMat}
         side="left"
         variant="long"
-        y={H / 2 - 4.69}
-        length={1.05}
+        y={H / 2 - 4.78}
+        length={1.06}
       />
-      {/* Power — misma cápsula, más larga */}
       <SideButton
         frameMat={frameMat}
         side="right"
         variant="long"
-        y={H / 2 - 3.45}
-        length={1.55}
+        y={H / 2 - 2.92}
+        length={1.48}
       />
+      <RecessedCameraControl frameMat={frameMat} />
 
       <BottomDetails />
     </group>

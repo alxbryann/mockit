@@ -187,7 +187,7 @@ const logoMatProps = {
 } as const
 
 export function MacBook() {
-  const { screenshot, deviceColor, deviceRotation } = useStore()
+  const { screenshot, deviceColor } = useStore()
   const frameMat = useFramePhysicalMaterial(deviceColor)
   const wedge = useMacWedge()
   const { apple: appleGeom, leaf: leafGeom } = useAppleLogoGeometries()
@@ -213,7 +213,7 @@ export function MacBook() {
   }, [wedge.geometry, appleGeom, leafGeom, bezelGeom])
 
   return (
-    <group rotation={deviceRotation}>
+    <group>
       <group position={[0, -1.05, 0]} rotation={[0, -0.22, 0]}>
         {/* Base en cuña */}
         <mesh geometry={wedge.geometry} castShadow receiveShadow>

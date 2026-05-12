@@ -32,8 +32,10 @@ type State = {
   deviceRotation: [number, number, number]
   /** H key: allow screen-space pan (XY) on the orbit target */
   cameraPanFree: boolean
+  /** Camera ↔ orbit target distance (scene units); updated from OrbitControls. */
+  orbitDistance: number
   /** Set by Scene; renders offscreen at exact pixel size. */
-  captureSceneAtSize: null | ((width: number, height: number) => string)
+  captureSceneAtSize: null | ((width: number, height: number, opts?: { transparent?: boolean }) => string)
   setCaptureSceneAtSize: (fn: State['captureSceneAtSize']) => void
   setScreenshot: (s: string | null) => void
   setScreenLoadError: (s: string | null) => void
@@ -44,9 +46,11 @@ type State = {
   setUiTheme: (t: 'dark' | 'light') => void
   setCameraRoll: (radians: number) => void
   setDeviceRotationAxis: (axis: 0 | 1 | 2, radians: number) => void
+  setDeviceRotation: (r: [number, number, number]) => void
   resetDeviceRotation: () => void
   toggleCameraPanFree: () => void
   setCameraPanFree: (v: boolean) => void
+  setOrbitDistance: (d: number) => void
 }
 
 export const useStore = create<State>((set) => ({
@@ -60,6 +64,7 @@ export const useStore = create<State>((set) => ({
   cameraRoll: 0,
   deviceRotation: [0, 0, 0],
   cameraPanFree: false,
+  orbitDistance: 28,
   captureSceneAtSize: null,
   setCaptureSceneAtSize: (fn) => set({ captureSceneAtSize: fn }),
   setScreenshot: (s) => set({ screenshot: s }),
@@ -76,7 +81,12 @@ export const useStore = create<State>((set) => ({
       next[axis] = wrapSignedPi(radians)
       return { deviceRotation: next }
     }),
+  setDeviceRotation: (r) =>
+    set({
+      deviceRotation: [wrapSignedPi(r[0]), wrapSignedPi(r[1]), wrapSignedPi(r[2])],
+    }),
   resetDeviceRotation: () => set({ deviceRotation: [0, 0, 0] }),
   toggleCameraPanFree: () => set((s) => ({ cameraPanFree: !s.cameraPanFree })),
   setCameraPanFree: (v) => set({ cameraPanFree: v }),
+  setOrbitDistance: (d) => set({ orbitDistance: d }),
 }))

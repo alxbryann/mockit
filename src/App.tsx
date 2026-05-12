@@ -1,6 +1,11 @@
 import { useEffect, useRef, useState } from 'react'
 import { exportPixelSize } from './highResCapture'
-import { Scene } from './Scene'
+import {
+  Scene,
+  ORBIT_MAX_DISTANCE,
+  ORBIT_MIN_DISTANCE,
+  ORBIT_ZOOM_REF_DISTANCE,
+} from './Scene'
 import { useStore, type DeviceKind } from './store'
 
 const DEVICE_OPTIONS: { id: DeviceKind; label: string }[] = [
@@ -31,6 +36,7 @@ export default function App() {
     autoRotate,
     uiTheme,
     cameraRoll,
+    orbitDistance,
     setScreenshot,
     setScreenLoadError,
     setDeviceKind,
@@ -46,6 +52,8 @@ export default function App() {
   } = useStore()
   const [exporting, setExporting] = useState(false)
   const [exportPreset, setExportPreset] = useState<ExportPreset>(3840)
+  /** PNG export: omit solid scene background (alpha) for compositing */
+  const [exportTransparentBg, setExportTransparentBg] = useState(false)
   const [exportError, setExportError] = useState<string | null>(null)
   const [sidePanelOpen, setSidePanelOpen] = useState(true)
 
@@ -77,6 +85,11 @@ export default function App() {
     window.addEventListener('keydown', onKeyDown)
     return () => window.removeEventListener('keydown', onKeyDown)
   }, [setCameraPanFree])
+
+  const zoomFactor = ORBIT_ZOOM_REF_DISTANCE / orbitDistance
+  const zoomLabel = `${parseFloat(zoomFactor.toFixed(1))}×`
+  const zoomRangeLo = parseFloat((ORBIT_ZOOM_REF_DISTANCE / ORBIT_MAX_DISTANCE).toFixed(1))
+  const zoomRangeHi = parseFloat((ORBIT_ZOOM_REF_DISTANCE / ORBIT_MIN_DISTANCE).toFixed(1))
 
   async function onUpload(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0]
@@ -124,8 +137,16 @@ export default function App() {
         }
         const capture = useStore.getState().captureSceneAtSize
         let dataUrl: string
-        if (exportPreset !== 'screen' && capture) {
-          const { w, h } = exportPixelSize(exportPreset, canvas.clientWidth, canvas.clientHeight)
+        const needOffscreen = exportTransparentBg || exportPreset !== 'screen'
+        if (needOffscreen) {
+          if (!capture) {
+            setExportError('Scene not ready. Wait a moment and try again.')
+            return
+          }
+          const { w, h } =
+            exportPreset === 'screen'
+              ? { w: canvas.width, h: canvas.height }
+              : exportPixelSize(exportPreset, canvas.clientWidth, canvas.clientHeight)
           const gl = canvas.getContext('webgl2') ?? canvas.getContext('webgl')
           if (gl) {
             const maxTex = gl.getParameter(gl.MAX_TEXTURE_SIZE) as number
@@ -134,7 +155,7 @@ export default function App() {
               return
             }
           }
-          dataUrl = capture(w, h)
+          dataUrl = capture(w, h, exportTransparentBg ? { transparent: true } : undefined)
         } else {
           dataUrl = canvas.toDataURL('image/png')
         }
@@ -196,6 +217,28 @@ export default function App() {
 
       <div className="relative min-h-0 flex-1">
         <Scene />
+
+        <div
+          className="pointer-events-none absolute top-3 left-3 z-[5] rounded-xl border px-3 py-2 shadow-lg backdrop-blur-md md:top-4 md:left-4"
+          style={{
+            background: 'color-mix(in srgb, var(--mockit-panel) 90%, transparent)',
+            borderColor: 'var(--mockit-panel-border)',
+            boxShadow: 'var(--mockit-shadow)',
+          }}
+          role="status"
+          aria-live="polite"
+          aria-label={`Zoom ${zoomLabel}, rango permitido aproximadamente ${zoomRangeLo} a ${zoomRangeHi} veces.`}
+        >
+          <p className="text-[10px] font-semibold uppercase tracking-wider" style={{ color: 'var(--mockit-text-muted)' }}>
+            Zoom
+          </p>
+          <p className="mt-0.5 text-sm font-semibold tabular-nums" style={{ color: 'var(--mockit-text)' }}>
+            {zoomLabel}
+          </p>
+          <p className="text-[10px] tabular-nums opacity-80" style={{ color: 'var(--mockit-text-muted)' }}>
+            {zoomRangeLo}–{zoomRangeHi}×
+          </p>
+        </div>
 
         <aside
           className={`absolute top-1/2 right-4 z-10 w-[min(100%-1.5rem,300px)] max-h-[calc(100%-1.5rem)] -translate-y-1/2 overflow-y-auto rounded-2xl border p-5 shadow-xl transition-[transform,opacity] duration-300 ease-out md:right-6 md:w-[min(100%-3rem,320px)] ${
@@ -292,26 +335,32 @@ export default function App() {
               <ColorRow value={bgColor} onChange={setBgColor} swatches={[...BG_SWATCHES]} />
             </Field>
 
-            <div className="flex items-center justify-between gap-3">
-              <span className="font-script text-[1.25rem]" style={{ color: 'var(--mockit-script)' }}>
-                auto-rotate
-              </span>
-              <button
-                type="button"
-                role="switch"
-                aria-checked={autoRotate}
-                onClick={() => setAutoRotate(!autoRotate)}
-                className="border-0 bg-transparent p-0"
-              >
-                <span className="mockit-toggle" data-on={autoRotate}>
-                  <span className="mockit-toggle-thumb" />
+            <div className="flex flex-col gap-1">
+              <div className="flex items-center justify-between gap-3">
+                <span className="font-script text-[1.25rem]" style={{ color: 'var(--mockit-script)' }}>
+                  auto-rotate
                 </span>
-              </button>
+                <button
+                  type="button"
+                  role="switch"
+                  aria-checked={autoRotate}
+                  onClick={() => setAutoRotate(!autoRotate)}
+                  className="border-0 bg-transparent p-0"
+                >
+                  <span className="mockit-toggle" data-on={autoRotate}>
+                    <span className="mockit-toggle-thumb" />
+                  </span>
+                </button>
+              </div>
+              <p className="text-[11px] leading-snug opacity-75" style={{ color: 'var(--mockit-text-muted)' }}>
+                Slowly spins the device (Y / turntable). The Y slider matches this motion.
+              </p>
             </div>
 
             <Field label="Camera roll">
               <p className="mb-2 font-script text-[0.95rem] leading-snug opacity-80" style={{ color: 'var(--mockit-script)' }}>
-                Roll the view around the camera axis. Works with dragging the scene.
+                Roll the view around the camera axis. Use right-drag (or two fingers on trackpad) to orbit, then roll
+                applies on top.
               </p>
               <div className="mb-2 flex flex-wrap gap-1.5">
                 {(
@@ -354,7 +403,9 @@ export default function App() {
 
             <Field label="Device rotation">
               <p className="mb-2 font-script text-[0.95rem] leading-snug opacity-80" style={{ color: 'var(--mockit-script)' }}>
-                Euler XYZ in degrees: tilt and turn the device in space (separate from camera roll).
+                Euler XYZ in degrees: tilt and turn the device in space (separate from camera roll). Left-drag on the
+                device or the background to adjust; hold Shift and drag for Z. Right-drag orbits the camera around the
+                scene.
               </p>
               {(
                 [
@@ -436,6 +487,28 @@ export default function App() {
               <p className="mb-3 text-[11px] leading-snug opacity-80" style={{ color: 'var(--mockit-text-muted)' }}>
                 {EXPORT_PRESETS.find((p) => p.id === exportPreset)?.hint}. Same framing as the viewport; lossless PNG.
               </p>
+              <div className="mb-3 flex items-center justify-between gap-3">
+                <span className="text-xs" style={{ color: 'var(--mockit-text-muted)' }}>
+                  No background
+                  <span className="mt-0.5 block text-[10px] leading-snug opacity-80">
+                    Transparent PNG (no solid color)
+                  </span>
+                </span>
+                <button
+                  type="button"
+                  role="switch"
+                  aria-checked={exportTransparentBg}
+                  onClick={() => {
+                    setExportTransparentBg((v) => !v)
+                    setExportError(null)
+                  }}
+                  className="border-0 bg-transparent p-0"
+                >
+                  <span className="mockit-toggle" data-on={exportTransparentBg}>
+                    <span className="mockit-toggle-thumb" />
+                  </span>
+                </button>
+              </div>
               <button
                 type="button"
                 onClick={exportPNG}

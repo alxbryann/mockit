@@ -25,3 +25,9 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+.vercel
+
+# 3D models — not committed (Apple IP / large binaries).
+# Run: curl -L "https://raw.githubusercontent.com/jessekorzan/themockitship/main/devices/iPhone%2017%20Pro%20/iphone-17-pro/source/iphone%2017_4.glb" -o public/models/iphone17pro.glb
+public/models/*.glb
+public/models/*.gltf
