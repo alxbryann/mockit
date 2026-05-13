@@ -22,7 +22,15 @@ const EXPORT_PRESETS: { id: ExportPreset; label: string; hint: string }[] = [
   { id: 7680, label: '8K', hint: 'long edge 7680 px' },
 ]
 
-const DEVICE_SWATCHES = ['#1a1a1a', '#e8e8e8', '#1e3a5f', '#8b2222', '#c9a227', '#b4b8c0'] as const
+/** Acabados iPhone Pro (titanio) y aluminio — hex cercanos a referencias de producto Apple. */
+const DEVICE_SWATCHES = [
+  '#1d1d1f', // Black Titanium
+  '#ebebed', // White Titanium
+  '#bfbdb8', // Natural Titanium
+  '#404a57', // Blue Titanium (Pro)
+  '#c9b8a2', // Desert Titanium
+  '#e2e3e5', // Silver / Starlight (aluminio)
+] as const
 const BG_SWATCHES = ['#0a0a0a', '#ffffff', '#0f172a', '#14532d', '#5c4033', '#f4f4f5'] as const
 
 export default function App() {

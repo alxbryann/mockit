@@ -57,7 +57,7 @@ export const useStore = create<State>((set) => ({
   screenshot: null,
   screenLoadError: null,
   deviceKind: 'phone',
-  deviceColor: '#1a1a1a',
+  deviceColor: '#bfbdb8', // Natural Titanium (iPhone Pro)
   bgColor: '#0a0a0a',
   autoRotate: true,
   uiTheme: 'dark',
