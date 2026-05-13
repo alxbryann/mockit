@@ -38,18 +38,22 @@ function flipUv180(geom: THREE.BufferGeometry) {
 }
 
 export function roundedRectShape(w: number, h: number, r: number): THREE.Shape {
+  const ww = Math.max(1e-4, w)
+  const hh = Math.max(1e-4, h)
+  const maxR = Math.min(ww, hh) / 2 - 1e-4
+  const rr = Math.min(Math.max(0, r), maxR)
   const s = new THREE.Shape()
-  const x = -w / 2,
-    y = -h / 2
-  s.moveTo(x + r, y)
-  s.lineTo(x + w - r, y)
-  s.quadraticCurveTo(x + w, y, x + w, y + r)
-  s.lineTo(x + w, y + h - r)
-  s.quadraticCurveTo(x + w, y + h, x + w - r, y + h)
-  s.lineTo(x + r, y + h)
-  s.quadraticCurveTo(x, y + h, x, y + h - r)
-  s.lineTo(x, y + r)
-  s.quadraticCurveTo(x, y, x + r, y)
+  const x = -ww / 2,
+    y = -hh / 2
+  s.moveTo(x + rr, y)
+  s.lineTo(x + ww - rr, y)
+  s.quadraticCurveTo(x + ww, y, x + ww, y + rr)
+  s.lineTo(x + ww, y + hh - rr)
+  s.quadraticCurveTo(x + ww, y + hh, x + ww - rr, y + hh)
+  s.lineTo(x + rr, y + hh)
+  s.quadraticCurveTo(x, y + hh, x, y + hh - rr)
+  s.lineTo(x, y + rr)
+  s.quadraticCurveTo(x, y, x + rr, y)
   return s
 }
 
@@ -160,9 +164,12 @@ export function ScreenshotPlane({
     [mat],
   )
 
-  const pw = screenW - planeInset * 2
-  const ph = screenH - planeInset * 2
-  const cornerR = Math.max(0.06, openingCornerR - planeInset)
+  const pw = Math.max(0.02, screenW - planeInset * 2)
+  const ph = Math.max(0.02, screenH - planeInset * 2)
+  const cornerR = Math.min(
+    Math.max(0.02, openingCornerR - planeInset),
+    Math.min(pw, ph) * 0.48,
+  )
 
   const screenGeom = useMemo(() => {
     const shape = roundedRectShape(pw, ph, cornerR)

@@ -2,6 +2,7 @@ import { Canvas, useFrame, useThree, type ThreeEvent } from '@react-three/fiber'
 import { OrbitControls, Environment, ContactShadows } from '@react-three/drei'
 import { Suspense } from 'react'
 import { MacBook } from './MacBook'
+import { MacBookFromGltf } from './MacBookFromGltf'
 import { PhoneFromGltf } from './PhoneFromGltf'
 import { PhoneProcedural } from './PhoneProcedural'
 import { useStore } from './store'
@@ -293,7 +294,11 @@ function SceneWorld() {
             <Suspense fallback={<PhoneProcedural />}>
               <PhoneFromGltf />
             </Suspense>
-          ) : <MacBook />}
+          ) : (
+            <Suspense fallback={<MacBook />}>
+              <MacBookFromGltf />
+            </Suspense>
+          )}
       </DeviceScene>
 
       <SceneContactShadows deviceKind={deviceKind} />
