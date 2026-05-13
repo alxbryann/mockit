@@ -58,6 +58,18 @@ npm run preview  # sirve el build local
 
 ---
 
+## Créditos del modelo 3D (iPhone)
+
+El archivo `public/models/iphone17pro.glb` corresponde al dispositivo **iPhone 17 Pro** incluido en el repositorio abierto [jessekorzan/themockitship](https://github.com/jessekorzan/themockitship) (*Device Mockup Kit* / mockitship).
+
+El modelo 3D original está acreditado allí como:
+
+- **«Iphone 17 pro»** por [Ibrahim.Bhl](https://skfb.ly/pzYOR) en Sketchfab, bajo licencia [**CC BY 4.0**](https://creativecommons.org/licenses/by/4.0/).
+
+Si redistribuyes capturas o builds que incluyan el GLB, respeta los términos de esa licencia (atribución al autor del modelo).
+
+---
+
 ## Licencia y estado
 
 Proyecto de **código abierto**: cualquiera puede usar el código, abrir issues y enviar pull requests. El estado es **alpha**; la API y el modelo pueden cambiar.
