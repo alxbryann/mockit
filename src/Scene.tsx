@@ -1,5 +1,5 @@
 import { Canvas, useFrame, useThree, type ThreeEvent } from '@react-three/fiber'
-import { OrbitControls, Environment, ContactShadows } from '@react-three/drei'
+import { OrbitControls, Environment, ContactShadows, useProgress } from '@react-three/drei'
 import { Suspense } from 'react'
 import { MacBook } from './MacBook'
 import { MacBookFromGltf } from './MacBookFromGltf'
@@ -7,7 +7,8 @@ import { PhoneFromGltf } from './PhoneFromGltf'
 import { PhoneProcedural } from './PhoneProcedural'
 import { useStore, type DeviceInstance } from './store'
 import { captureSceneToPngDataUrl } from './highResCapture'
-import { forwardRef, useEffect, useLayoutEffect, useMemo, useRef } from 'react'
+import { isGradientBg } from './gradients'
+import { forwardRef, useCallback, useEffect, useLayoutEffect, useMemo, useRef } from 'react'
 import { MOUSE, TOUCH } from 'three'
 import * as THREE from 'three'
 import type { OrbitControls as OrbitControlsImpl } from 'three-stdlib'
@@ -269,6 +270,15 @@ function OrbitWithRoll({ controlsRef }: { controlsRef: React.RefObject<OrbitCont
 
 function SceneBackgroundSync() {
   const bgColor = useStore((s) => s.bgColor)
+  const scene = useThree((s) => s.scene)
+
+  useEffect(() => {
+    if (isGradientBg(bgColor)) {
+      scene.background = null
+    }
+  }, [bgColor, scene])
+
+  if (isGradientBg(bgColor)) return null
   return <color attach="background" args={[bgColor]} />
 }
 
@@ -279,7 +289,7 @@ function SceneCaptureRegistration() {
   const setCaptureSceneAtSize = useStore((s) => s.setCaptureSceneAtSize)
 
   useEffect(() => {
-    const impl = (width: number, height: number, opts?: { transparent?: boolean }) =>
+    const impl = (width: number, height: number, opts?: { transparent?: boolean; bgCss?: string }) =>
       captureSceneToPngDataUrl(gl, scene, camera as THREE.PerspectiveCamera, width, height, opts)
     setCaptureSceneAtSize(impl)
     ;(window as any).__mockitCtx = { gl, scene, camera }
@@ -314,7 +324,34 @@ function SceneContactShadows({ deviceKind }: { deviceKind: 'phone' | 'mac' }) {
   )
 }
 
-function SceneWorld() {
+function SceneLoadingMonitor({ onReady }: { onReady?: () => void }) {
+  const { active } = useProgress()
+  const wasActiveRef = useRef(false)
+  const calledRef = useRef(false)
+
+  useEffect(() => {
+    if (active) wasActiveRef.current = true
+    if (!active && wasActiveRef.current && !calledRef.current) {
+      calledRef.current = true
+      onReady?.()
+    }
+  }, [active, onReady])
+
+  // Fallback: fire after 4 s regardless (e.g. if DefaultLoadingManager never fires)
+  useEffect(() => {
+    const t = setTimeout(() => {
+      if (!calledRef.current) {
+        calledRef.current = true
+        onReady?.()
+      }
+    }, 4000)
+    return () => clearTimeout(t)
+  }, [onReady])
+
+  return null
+}
+
+function SceneWorld({ onReady }: { onReady?: () => void }) {
   const devices = useStore((s) => s.devices)
   const activeDeviceId = useStore((s) => s.activeDeviceId)
   const activeDevice = devices.find((d) => d.id === activeDeviceId) ?? devices[0]
@@ -322,6 +359,7 @@ function SceneWorld() {
 
   return (
     <>
+      <SceneLoadingMonitor onReady={onReady} />
       <SceneBackgroundSync />
       <SceneCaptureRegistration />
       <ambientLight intensity={0.2} />
@@ -350,18 +388,23 @@ function SceneWorld() {
   )
 }
 
-export const Scene = forwardRef<HTMLCanvasElement>(function Scene(_props, ref) {
-  const bgColor = useStore((s) => s.bgColor)
+export const Scene = forwardRef<HTMLCanvasElement, { onReady?: () => void }>(
+  function Scene({ onReady }, ref) {
+    const bgColor = useStore((s) => s.bgColor)
+    const stableOnReady = useCallback(() => onReady?.(), [onReady])
 
-  return (
-    <Canvas
-      ref={ref}
-      shadows
-      camera={{ position: [0, 0, 28], fov: 28 }}
-      gl={{ preserveDrawingBuffer: true, antialias: true, toneMappingExposure: 0.94 }}
-      style={{ background: bgColor, width: '100%', height: '100%' }}
-    >
-      <SceneWorld />
-    </Canvas>
-  )
-})
+    return (
+      <div style={{ width: '100%', height: '100%', background: bgColor }}>
+        <Canvas
+          ref={ref}
+          shadows
+          camera={{ position: [0, 0, 28], fov: 28 }}
+          gl={{ preserveDrawingBuffer: true, antialias: true, toneMappingExposure: 0.94, alpha: true }}
+          style={{ width: '100%', height: '100%' }}
+        >
+          <SceneWorld onReady={stableOnReady} />
+        </Canvas>
+      </div>
+    )
+  },
+)

@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { exportPixelSize } from './highResCapture'
 import {
   Scene,
@@ -7,6 +7,7 @@ import {
   ORBIT_ZOOM_REF_DISTANCE,
 } from './Scene'
 import { useStore, type DeviceKind } from './store'
+import { GRADIENT_PRESETS, isGradientBg } from './gradients'
 
 const DEVICE_OPTIONS: { id: DeviceKind; label: string }[] = [
   { id: 'phone', label: 'Phone' },
@@ -22,14 +23,35 @@ const EXPORT_PRESETS: { id: ExportPreset; label: string; hint: string }[] = [
   { id: 7680, label: '8K', hint: 'long edge 7680 px' },
 ]
 
-const DEVICE_SWATCHES = [
-  '#1d1d1f',
-  '#ebebed',
-  '#bfbdb8',
-  '#404a57',
-  '#c9b8a2',
-  '#e2e3e5',
-] as const
+const DEVICE_COLOR_GROUPS: { label: string; colors: { hex: string; name: string }[] }[] = [
+  {
+    label: 'iPhone 17',
+    colors: [
+      { hex: '#DFCEEA', name: 'Lavanda' },
+      { hex: '#96AED1', name: 'Mist Blue' },
+      { hex: '#A9B689', name: 'Sage' },
+      { hex: '#353839', name: 'Negro' },
+      { hex: '#F5F5F5', name: 'Blanco' },
+    ],
+  },
+  {
+    label: 'iPhone 17 Air',
+    colors: [
+      { hex: '#F0F9FF', name: 'Sky Blue' },
+      { hex: '#FFFCF5', name: 'Light Gold' },
+      { hex: '#000000', name: 'Space Black' },
+      { hex: '#FCFCFC', name: 'Cloud White' },
+    ],
+  },
+  {
+    label: 'iPhone 17 Pro / Pro Max',
+    colors: [
+      { hex: '#32374A', name: 'Deep Blue' },
+      { hex: '#F77E2D', name: 'Cosmic Orange' },
+      { hex: '#F5F5F5', name: 'Silver' },
+    ],
+  },
+]
 const BG_SWATCHES = ['#0a0a0a', '#ffffff', '#0f172a', '#14532d', '#5c4033', '#f4f4f5'] as const
 
 export default function App() {
@@ -65,6 +87,14 @@ export default function App() {
   const [exportTransparentBg, setExportTransparentBg] = useState(false)
   const [exportError, setExportError] = useState<string | null>(null)
   const [sidePanelOpen, setSidePanelOpen] = useState(true)
+  const [studioReady, setStudioReady] = useState(false)
+  const mountTimeRef = useRef(Date.now())
+
+  const handleSceneReady = useCallback(() => {
+    const elapsed = Date.now() - mountTimeRef.current
+    const delay = Math.max(0, 350 - elapsed)
+    setTimeout(() => setStudioReady(true), delay)
+  }, [])
 
   useEffect(() => {
     document.documentElement.dataset.theme = uiTheme
@@ -164,7 +194,7 @@ export default function App() {
               return
             }
           }
-          dataUrl = capture(w, h, exportTransparentBg ? { transparent: true } : undefined)
+          dataUrl = capture(w, h, exportTransparentBg ? { transparent: true } : { bgCss: bgColor })
         } else {
           dataUrl = canvas.toDataURL('image/png')
         }
@@ -183,17 +213,69 @@ export default function App() {
 
   return (
     <div className="flex h-full min-h-0 w-full flex-col" style={{ background: 'var(--mockit-bg)' }}>
+      {/* Studio loading splash */}
+      <div className="mockit-loading-overlay" data-hidden={studioReady ? 'true' : 'false'}>
+        <svg viewBox="0 0 40 40" width={48} height={48} style={{ flexShrink: 0 }}>
+          <defs>
+            <radialGradient id="ldr-orb" cx="35%" cy="30%" r="70%">
+              <stop offset="0" stopColor="#ffffff" stopOpacity=".9" />
+              <stop offset=".4" stopColor="#c5b3ff" />
+              <stop offset="1" stopColor="#6e4bff" />
+            </radialGradient>
+            <radialGradient id="ldr-blush" cx="65%" cy="65%" r="60%">
+              <stop offset="0" stopColor="#ff7eb6" stopOpacity=".8" />
+              <stop offset="1" stopColor="#ff7eb6" stopOpacity="0" />
+            </radialGradient>
+          </defs>
+          <circle cx="20" cy="20" r="17" fill="url(#ldr-orb)" />
+          <circle cx="20" cy="20" r="17" fill="url(#ldr-blush)" />
+          <ellipse cx="14" cy="12" rx="6" ry="3" fill="#fff" opacity=".55" />
+        </svg>
+        <div className="mockit-spinner" />
+        <p style={{ font: '500 13px/1 var(--font-sans)', color: 'rgba(255,255,255,.35)', margin: 0, letterSpacing: '0.01em' }}>
+          Loading studio…
+        </p>
+      </div>
+      {/* Header */}
       <header
         className="flex h-14 shrink-0 items-center justify-between border-b px-5"
-        style={{ borderColor: 'var(--mockit-nav-border)' }}
+        style={{
+          background: 'rgba(10,6,26,.7)',
+          backdropFilter: 'blur(20px) saturate(160%)',
+          WebkitBackdropFilter: 'blur(20px) saturate(160%)',
+          borderColor: 'rgba(255,255,255,.1)',
+        }}
       >
         <div className="flex items-center gap-2.5">
-          <PhoneGlyph className="h-[22px] w-[22px] shrink-0 text-[var(--mockit-accent-bright)]" />
+          {/* PhoneGlyph kept for future use */}
+          <PhoneGlyph className="hidden" aria-hidden />
+          {/* Glass orb logo */}
+          <svg viewBox="0 0 40 40" width={30} height={30} style={{ flexShrink: 0 }}>
+            <defs>
+              <radialGradient id="orb-s" cx="35%" cy="30%" r="70%">
+                <stop offset="0" stopColor="#ffffff" stopOpacity=".9" />
+                <stop offset=".4" stopColor="#c5b3ff" />
+                <stop offset="1" stopColor="#6e4bff" />
+              </radialGradient>
+              <radialGradient id="blush-s" cx="65%" cy="65%" r="60%">
+                <stop offset="0" stopColor="#ff7eb6" stopOpacity=".8" />
+                <stop offset="1" stopColor="#ff7eb6" stopOpacity="0" />
+              </radialGradient>
+            </defs>
+            <circle cx="20" cy="20" r="17" fill="url(#orb-s)" />
+            <circle cx="20" cy="20" r="17" fill="url(#blush-s)" />
+            <ellipse cx="14" cy="12" rx="6" ry="3" fill="#fff" opacity=".55" />
+          </svg>
           <span
-            className="text-[1.15rem] font-light lowercase tracking-tight"
-            style={{ color: 'var(--mockit-text)' }}
+            style={{
+              fontWeight: 700,
+              fontSize: 16,
+              letterSpacing: '-0.02em',
+              color: 'rgba(255,255,255,.9)',
+              fontFamily: 'var(--font-sans)',
+            }}
           >
-            mockit
+            openmockup<span style={{ color: 'var(--accent)' }}>.ai</span>
           </span>
         </div>
         <div className="flex items-center gap-1">
@@ -203,8 +285,10 @@ export default function App() {
             aria-pressed={sidePanelOpen}
             aria-label={sidePanelOpen ? 'Hide options panel' : 'Show options panel'}
             title={sidePanelOpen ? 'Hide panel — [ key' : 'Show panel — [ key'}
-            className="flex cursor-pointer rounded-lg border-0 bg-transparent p-2 transition hover:bg-[color-mix(in_srgb,var(--mockit-text)_8%,transparent)]"
-            style={{ color: 'var(--mockit-text-muted)' }}
+            className="flex cursor-pointer rounded-lg border-0 bg-transparent p-2 transition"
+            style={{ color: 'rgba(255,255,255,.5)' }}
+            onMouseEnter={(e) => { (e.currentTarget as HTMLButtonElement).style.background = 'rgba(255,255,255,.08)' }}
+            onMouseLeave={(e) => { (e.currentTarget as HTMLButtonElement).style.background = 'transparent' }}
           >
             <PanelSidebarGlyph className="h-5 w-5 shrink-0" />
           </button>
@@ -217,56 +301,69 @@ export default function App() {
             <span className="mockit-toggle" data-on={uiTheme === 'light'}>
               <span className="mockit-toggle-thumb" />
             </span>
-            <span className="font-script text-[1.35rem] leading-none" style={{ color: 'var(--mockit-script)' }}>
-              {uiTheme === 'dark' ? 'light' : 'dark'}
-            </span>
           </button>
         </div>
       </header>
 
       <div className="relative min-h-0 flex-1">
-        <Scene />
+        <Scene onReady={handleSceneReady} />
 
+        {/* Zoom badge */}
         <div
-          className="pointer-events-none absolute top-3 left-3 z-[5] rounded-xl border px-3 py-2 shadow-lg backdrop-blur-md md:top-4 md:left-4"
+          className="pointer-events-none absolute top-3 left-3 z-[5] rounded-xl px-3 py-2 md:top-4 md:left-4"
           style={{
-            background: 'color-mix(in srgb, var(--mockit-panel) 90%, transparent)',
-            borderColor: 'var(--mockit-panel-border)',
-            boxShadow: 'var(--mockit-shadow)',
+            background: 'rgba(18,12,40,.75)',
+            backdropFilter: 'blur(16px)',
+            WebkitBackdropFilter: 'blur(16px)',
+            border: '1px solid rgba(255,255,255,.12)',
+            borderRadius: 'var(--radius-sm)',
           }}
           role="status"
           aria-live="polite"
         >
-          <p className="text-[10px] font-semibold uppercase tracking-wider" style={{ color: 'var(--mockit-text-muted)' }}>
+          <p
+            style={{
+              font: '600 10px/1 var(--font-sans)',
+              letterSpacing: '0.08em',
+              textTransform: 'uppercase',
+              color: 'rgba(255,255,255,.4)',
+            }}
+          >
             Zoom
           </p>
-          <p className="mt-0.5 text-sm font-semibold tabular-nums" style={{ color: 'var(--mockit-text)' }}>
+          <p className="mt-0.5 text-sm font-semibold tabular-nums" style={{ color: 'rgba(255,255,255,.9)' }}>
             {zoomLabel}
           </p>
-          <p className="text-[10px] tabular-nums opacity-80" style={{ color: 'var(--mockit-text-muted)' }}>
+          <p className="text-[10px] tabular-nums" style={{ color: 'rgba(255,255,255,.45)' }}>
             {zoomRangeLo}–{zoomRangeHi}×
           </p>
         </div>
 
+        {/* Side panel */}
         <aside
-          className={`absolute top-1/2 right-4 z-10 w-[min(100%-1.5rem,300px)] max-h-[calc(100%-1.5rem)] -translate-y-1/2 overflow-y-auto rounded-2xl border p-5 shadow-xl transition-[transform,opacity] duration-300 ease-out md:right-6 md:w-[min(100%-3rem,320px)] ${
+          className={`absolute top-1/2 right-4 z-10 w-[min(100%-1.5rem,300px)] max-h-[calc(100%-1.5rem)] -translate-y-1/2 overflow-y-auto rounded-2xl p-5 transition-[transform,opacity] duration-300 ease-out md:right-6 md:w-[min(100%-3rem,320px)] ${
             sidePanelOpen
               ? 'translate-x-0 opacity-100'
               : 'pointer-events-none translate-x-[calc(100%+2rem)] opacity-0'
           }`}
           style={{
-            background: 'var(--mockit-panel)',
-            borderColor: 'var(--mockit-panel-border)',
-            boxShadow: 'var(--mockit-shadow)',
+            background: 'rgba(18,12,40,0.72)',
+            backdropFilter: 'blur(24px) saturate(160%)',
+            WebkitBackdropFilter: 'blur(24px) saturate(160%)',
+            border: '1px solid rgba(255,255,255,.12)',
+            boxShadow: '0 30px 60px rgba(0,0,0,.5), inset 0 1px 0 rgba(255,255,255,.1)',
           }}
           aria-hidden={!sidePanelOpen}
         >
-          <div className="mb-4 flex justify-end border-b pb-3" style={{ borderColor: 'var(--mockit-panel-border)' }}>
+          <div
+            className="mb-4 flex justify-end border-b pb-3"
+            style={{ borderColor: 'rgba(255,255,255,.1)' }}
+          >
             <button
               type="button"
               onClick={() => setSidePanelOpen(false)}
               className="flex cursor-pointer items-center gap-1.5 border-0 bg-transparent p-0 text-xs opacity-80 transition hover:opacity-100"
-              style={{ color: 'var(--mockit-text-muted)' }}
+              style={{ color: 'rgba(255,255,255,.5)' }}
               aria-label="Hide options panel"
               title="Hide panel — [ key"
             >
@@ -287,12 +384,32 @@ export default function App() {
                       key={d.id}
                       type="button"
                       onClick={() => setActiveDeviceId(d.id)}
-                      className={`rounded-lg border px-3 py-1.5 text-xs transition ${
-                        isActive
-                          ? 'border-[var(--mockit-accent-bright)] bg-[var(--mockit-accent)]/15 text-[var(--mockit-text)]'
-                          : 'border-[color-mix(in_srgb,var(--mockit-text)_18%,transparent)] hover:border-[var(--mockit-accent)]/50'
-                      }`}
-                      style={{ color: isActive ? undefined : 'var(--mockit-text-muted)' }}
+                      style={isActive ? {
+                        background: 'rgba(110,75,255,.25)',
+                        border: '1px solid var(--accent)',
+                        color: '#fff',
+                        borderRadius: 'var(--radius-sm)',
+                      } : {
+                        background: 'rgba(255,255,255,.07)',
+                        border: '1px solid rgba(255,255,255,.12)',
+                        color: 'rgba(255,255,255,.65)',
+                        borderRadius: 'var(--radius-sm)',
+                      }}
+                      className="px-3 py-1.5 text-xs transition"
+                      onMouseEnter={(e) => {
+                        if (!isActive) {
+                          const el = e.currentTarget
+                          el.style.background = 'rgba(255,255,255,.12)'
+                          el.style.borderColor = 'rgba(255,255,255,.25)'
+                        }
+                      }}
+                      onMouseLeave={(e) => {
+                        if (!isActive) {
+                          const el = e.currentTarget
+                          el.style.background = 'rgba(255,255,255,.07)'
+                          el.style.borderColor = 'rgba(255,255,255,.12)'
+                        }
+                      }}
                     >
                       {i + 1}
                     </button>
@@ -302,8 +419,23 @@ export default function App() {
                   type="button"
                   onClick={() => addDevice('phone')}
                   title="Add iPhone"
-                  className="rounded-lg border px-3 py-1.5 text-xs transition border-[color-mix(in_srgb,var(--mockit-text)_18%,transparent)] hover:border-[var(--mockit-accent)]/50"
-                  style={{ color: 'var(--mockit-text-muted)' }}
+                  style={{
+                    background: 'rgba(255,255,255,.07)',
+                    border: '1px solid rgba(255,255,255,.12)',
+                    color: 'rgba(255,255,255,.65)',
+                    borderRadius: 'var(--radius-sm)',
+                  }}
+                  className="px-3 py-1.5 text-xs transition"
+                  onMouseEnter={(e) => {
+                    const el = e.currentTarget
+                    el.style.background = 'rgba(255,255,255,.12)'
+                    el.style.borderColor = 'rgba(255,255,255,.25)'
+                  }}
+                  onMouseLeave={(e) => {
+                    const el = e.currentTarget
+                    el.style.background = 'rgba(255,255,255,.07)'
+                    el.style.borderColor = 'rgba(255,255,255,.12)'
+                  }}
                 >
                   + Phone
                 </button>
@@ -311,30 +443,68 @@ export default function App() {
                   type="button"
                   onClick={() => addDevice('mac')}
                   title="Add MacBook"
-                  className="rounded-lg border px-3 py-1.5 text-xs transition border-[color-mix(in_srgb,var(--mockit-text)_18%,transparent)] hover:border-[var(--mockit-accent)]/50"
-                  style={{ color: 'var(--mockit-text-muted)' }}
+                  style={{
+                    background: 'rgba(255,255,255,.07)',
+                    border: '1px solid rgba(255,255,255,.12)',
+                    color: 'rgba(255,255,255,.65)',
+                    borderRadius: 'var(--radius-sm)',
+                  }}
+                  className="px-3 py-1.5 text-xs transition"
+                  onMouseEnter={(e) => {
+                    const el = e.currentTarget
+                    el.style.background = 'rgba(255,255,255,.12)'
+                    el.style.borderColor = 'rgba(255,255,255,.25)'
+                  }}
+                  onMouseLeave={(e) => {
+                    const el = e.currentTarget
+                    el.style.background = 'rgba(255,255,255,.07)'
+                    el.style.borderColor = 'rgba(255,255,255,.12)'
+                  }}
                 >
                   + Mac
                 </button>
               </div>
               {/* Rotate / Move toggle */}
               <div className="mt-2 flex items-center gap-1.5">
-                {(['rotate', 'move'] as const).map((mode) => (
-                  <button
-                    key={mode}
-                    type="button"
-                    onClick={() => setDeviceDragMode(mode)}
-                    className={`flex items-center gap-1 rounded-lg border px-2.5 py-1 text-xs transition ${
-                      deviceDragMode === mode
-                        ? 'border-[var(--mockit-accent-bright)] bg-[var(--mockit-accent)]/15 text-[var(--mockit-text)]'
-                        : 'border-[color-mix(in_srgb,var(--mockit-text)_18%,transparent)] hover:border-[var(--mockit-accent)]/50'
-                    }`}
-                    style={{ color: deviceDragMode === mode ? undefined : 'var(--mockit-text-muted)' }}
-                  >
-                    {mode === 'rotate' ? <RotateGlyph className="h-3 w-3 shrink-0" /> : <MoveGlyph className="h-3 w-3 shrink-0" />}
-                    {mode === 'rotate' ? 'Rotate' : 'Move'}
-                  </button>
-                ))}
+                {(['rotate', 'move'] as const).map((mode) => {
+                  const isActive = deviceDragMode === mode
+                  return (
+                    <button
+                      key={mode}
+                      type="button"
+                      onClick={() => setDeviceDragMode(mode)}
+                      style={isActive ? {
+                        background: 'rgba(110,75,255,.25)',
+                        border: '1px solid var(--accent)',
+                        color: '#fff',
+                        borderRadius: 'var(--radius-sm)',
+                      } : {
+                        background: 'rgba(255,255,255,.07)',
+                        border: '1px solid rgba(255,255,255,.12)',
+                        color: 'rgba(255,255,255,.65)',
+                        borderRadius: 'var(--radius-sm)',
+                      }}
+                      className="flex items-center gap-1 px-2.5 py-1 text-xs transition"
+                      onMouseEnter={(e) => {
+                        if (!isActive) {
+                          const el = e.currentTarget
+                          el.style.background = 'rgba(255,255,255,.12)'
+                          el.style.borderColor = 'rgba(255,255,255,.25)'
+                        }
+                      }}
+                      onMouseLeave={(e) => {
+                        if (!isActive) {
+                          const el = e.currentTarget
+                          el.style.background = 'rgba(255,255,255,.07)'
+                          el.style.borderColor = 'rgba(255,255,255,.12)'
+                        }
+                      }}
+                    >
+                      {mode === 'rotate' ? <RotateGlyph className="h-3 w-3 shrink-0" /> : <MoveGlyph className="h-3 w-3 shrink-0" />}
+                      {mode === 'rotate' ? 'Rotate' : 'Move'}
+                    </button>
+                  )
+                })}
               </div>
 
               {devices.length > 1 && (
@@ -342,21 +512,35 @@ export default function App() {
                   type="button"
                   onClick={() => removeDevice(activeDevice.id)}
                   className="mt-1.5 text-[11px] opacity-60 hover:opacity-100 transition border-0 bg-transparent p-0 cursor-pointer"
-                  style={{ color: 'var(--mockit-text-muted)' }}
+                  style={{ color: 'rgba(255,255,255,.5)' }}
                 >
                   Remove device {devices.findIndex((d) => d.id === activeDeviceId) + 1}
                 </button>
               )}
             </Field>
 
-            {/* Screenshot for active device */}
+            {/* Screenshot upload for active device */}
             <button
               type="button"
               onClick={() => fileRef.current?.click()}
-              className="flex w-full cursor-pointer flex-col items-center justify-center rounded-xl border-2 border-dashed py-7 transition hover:border-[var(--mockit-accent)] hover:bg-[var(--mockit-accent)]/5"
-              style={{ borderColor: 'var(--mockit-upload-dash)' }}
+              className="flex w-full cursor-pointer flex-col items-center justify-center py-7 transition"
+              style={{
+                border: '2px dashed rgba(110,75,255,.4)',
+                borderRadius: 'var(--radius)',
+                color: 'rgba(255,255,255,.65)',
+              }}
+              onMouseEnter={(e) => {
+                const el = e.currentTarget
+                el.style.borderColor = 'rgba(110,75,255,.7)'
+                el.style.background = 'rgba(110,75,255,.06)'
+              }}
+              onMouseLeave={(e) => {
+                const el = e.currentTarget
+                el.style.borderColor = 'rgba(110,75,255,.4)'
+                el.style.background = 'transparent'
+              }}
             >
-              <span className="font-script text-[1.35rem]" style={{ color: 'var(--mockit-script)' }}>
+              <span style={{ font: '500 14px/1 var(--font-sans)', color: 'rgba(255,255,255,.65)' }}>
                 {screenshot ? '+ replace screenshot' : '+ upload screenshot'}
               </span>
             </button>
@@ -372,8 +556,8 @@ export default function App() {
               <button
                 type="button"
                 onClick={() => updateDevice(activeDevice.id, { screenshot: null, screenLoadError: null })}
-                className="font-script -mt-2 self-center text-base opacity-70 hover:opacity-100"
-                style={{ color: 'var(--mockit-script)' }}
+                className="-mt-2 self-center text-base opacity-70 hover:opacity-100 border-0 bg-transparent p-0 cursor-pointer"
+                style={{ font: '400 14px/1 var(--font-sans)', color: 'rgba(255,255,255,.5)' }}
               >
                 Clear
               </button>
@@ -394,11 +578,32 @@ export default function App() {
                         updateDevice(activeDevice.id, { deviceKind: id })
                         resetDeviceRotation(activeDevice.id)
                       }}
-                      className={`rounded-lg border px-3 py-2 text-xs transition ${
-                        on
-                          ? 'border-[var(--mockit-accent-bright)] bg-[var(--mockit-accent)]/15 text-[var(--mockit-text)]'
-                          : 'border-[color-mix(in_srgb,var(--mockit-text)_18%,transparent)] hover:border-[var(--mockit-accent)]/50'
-                      }`}
+                      style={on ? {
+                        background: 'rgba(110,75,255,.25)',
+                        border: '1px solid var(--accent)',
+                        color: '#fff',
+                        borderRadius: 'var(--radius-sm)',
+                      } : {
+                        background: 'rgba(255,255,255,.07)',
+                        border: '1px solid rgba(255,255,255,.12)',
+                        color: 'rgba(255,255,255,.65)',
+                        borderRadius: 'var(--radius-sm)',
+                      }}
+                      className="px-3 py-2 text-xs transition"
+                      onMouseEnter={(e) => {
+                        if (!on) {
+                          const el = e.currentTarget
+                          el.style.background = 'rgba(255,255,255,.12)'
+                          el.style.borderColor = 'rgba(255,255,255,.25)'
+                        }
+                      }}
+                      onMouseLeave={(e) => {
+                        if (!on) {
+                          const el = e.currentTarget
+                          el.style.background = 'rgba(255,255,255,.07)'
+                          el.style.borderColor = 'rgba(255,255,255,.12)'
+                        }
+                      }}
                     >
                       {label}
                     </button>
@@ -408,16 +613,44 @@ export default function App() {
             </Field>
 
             <Field label="Device color">
-              <ColorRow
-                value={deviceColor}
-                onChange={(c) => updateDevice(activeDevice.id, { deviceColor: c })}
-                swatches={[...DEVICE_SWATCHES]}
-              />
+              <div className="flex flex-col gap-3">
+                {DEVICE_COLOR_GROUPS.map((group) => (
+                  <div key={group.label}>
+                    <p
+                      className="mb-1.5"
+                      style={{ font: '400 10px/1 var(--font-sans)', color: 'rgba(255,255,255,.35)', letterSpacing: '0.04em' }}
+                    >
+                      {group.label}
+                    </p>
+                    <div className="flex flex-wrap items-center gap-2">
+                      {group.colors.map(({ hex, name }) => {
+                        const selected = deviceColor.toLowerCase() === hex.toLowerCase()
+                        return (
+                          <button
+                            key={hex}
+                            type="button"
+                            onClick={() => updateDevice(activeDevice.id, { deviceColor: hex })}
+                            title={name}
+                            aria-label={name}
+                            className={`h-7 w-7 rounded-full border-2 transition ${selected ? 'scale-110' : ''}`}
+                            style={{
+                              background: hex,
+                              borderColor: selected ? 'var(--accent)' : 'rgba(255,255,255,.22)',
+                              boxShadow: selected ? '0 0 14px rgba(110,75,255,.5)' : undefined,
+                              outline: (hex === '#F5F5F5' || hex === '#FCFCFC' || hex === '#FFFCF5' || hex === '#F0F9FF') ? '1px solid rgba(255,255,255,.15)' : undefined,
+                            }}
+                          />
+                        )
+                      })}
+                    </div>
+                  </div>
+                ))}
+              </div>
             </Field>
 
             {devices.length > 1 && (
               <Field label="Position X">
-                <label className="flex items-center gap-3 text-xs" style={{ color: 'var(--mockit-text-muted)' }}>
+                <label className="flex items-center gap-3 text-xs" style={{ color: 'rgba(255,255,255,.5)' }}>
                   <span className="w-12 shrink-0 tabular-nums">
                     {activeDevice.positionX > 0 ? '+' : ''}{Math.round(activeDevice.positionX)}
                   </span>
@@ -428,7 +661,7 @@ export default function App() {
                     step={0.5}
                     value={activeDevice.positionX}
                     onChange={(e) => updateDevice(activeDevice.id, { positionX: Number(e.target.value) })}
-                    className="min-w-0 flex-1 accent-[var(--mockit-accent-bright)]"
+                    className="min-w-0 flex-1 accent-[var(--accent)]"
                   />
                 </label>
               </Field>
@@ -436,11 +669,33 @@ export default function App() {
 
             <Field label="Background">
               <ColorRow value={bgColor} onChange={setBgColor} swatches={[...BG_SWATCHES]} />
+              <div className="mt-2 flex flex-wrap gap-2">
+                {GRADIENT_PRESETS.map((g) => {
+                  const selected = bgColor === g.css
+                  return (
+                    <button
+                      key={g.id}
+                      type="button"
+                      onClick={() => setBgColor(g.css)}
+                      title={g.label}
+                      className="h-8 w-8 rounded-full border-2 transition"
+                      style={{
+                        background: g.css,
+                        borderColor: selected ? 'var(--accent)' : 'rgba(255,255,255,.22)',
+                        boxShadow: selected ? '0 0 14px rgba(110,75,255,.5)' : undefined,
+                        transform: selected ? 'scale(1.05)' : undefined,
+                      }}
+                      aria-label={g.label}
+                      aria-pressed={selected}
+                    />
+                  )
+                })}
+              </div>
             </Field>
 
             <div className="flex flex-col gap-1">
               <div className="flex items-center justify-between gap-3">
-                <span className="font-script text-[1.25rem]" style={{ color: 'var(--mockit-script)' }}>
+                <span style={{ font: '500 13px/1 var(--font-sans)', color: 'rgba(255,255,255,.8)' }}>
                   auto-rotate
                 </span>
                 <button
@@ -455,13 +710,16 @@ export default function App() {
                   </span>
                 </button>
               </div>
-              <p className="text-[11px] leading-snug opacity-75" style={{ color: 'var(--mockit-text-muted)' }}>
+              <p style={{ font: '400 11px/1.4 var(--font-sans)', color: 'rgba(255,255,255,.45)' }}>
                 Slowly spins all devices (Y / turntable).
               </p>
             </div>
 
             <Field label="Camera roll">
-              <p className="mb-2 font-script text-[0.95rem] leading-snug opacity-80" style={{ color: 'var(--mockit-script)' }}>
+              <p
+                className="mb-2 leading-snug"
+                style={{ font: '400 13px/1.45 var(--font-sans)', color: 'rgba(255,255,255,.45)' }}
+              >
                 Roll the view around the camera axis. Right-drag orbits; roll applies on top.
               </p>
               <div className="mb-2 flex flex-wrap gap-1.5">
@@ -472,22 +730,46 @@ export default function App() {
                     { rad: Math.PI, label: '180°' },
                     { rad: -Math.PI / 2, label: '270°' },
                   ] as const
-                ).map(({ rad, label }) => (
-                  <button
-                    key={label}
-                    type="button"
-                    onClick={() => setCameraRoll(rad)}
-                    className={`rounded-lg border px-2.5 py-1 text-xs transition ${
-                      Math.abs(cameraRoll - rad) < 0.02
-                        ? 'border-[var(--mockit-accent-bright)] bg-[var(--mockit-accent)]/15 text-[var(--mockit-text)]'
-                        : 'border-[color-mix(in_srgb,var(--mockit-text)_18%,transparent)] hover:border-[var(--mockit-accent)]/50'
-                    }`}
-                  >
-                    {label}
-                  </button>
-                ))}
+                ).map(({ rad, label }) => {
+                  const on = Math.abs(cameraRoll - rad) < 0.02
+                  return (
+                    <button
+                      key={label}
+                      type="button"
+                      onClick={() => setCameraRoll(rad)}
+                      style={on ? {
+                        background: 'rgba(110,75,255,.25)',
+                        border: '1px solid var(--accent)',
+                        color: '#fff',
+                        borderRadius: 'var(--radius-sm)',
+                      } : {
+                        background: 'rgba(255,255,255,.07)',
+                        border: '1px solid rgba(255,255,255,.12)',
+                        color: 'rgba(255,255,255,.65)',
+                        borderRadius: 'var(--radius-sm)',
+                      }}
+                      className="px-2.5 py-1 text-xs transition"
+                      onMouseEnter={(e) => {
+                        if (!on) {
+                          const el = e.currentTarget
+                          el.style.background = 'rgba(255,255,255,.12)'
+                          el.style.borderColor = 'rgba(255,255,255,.25)'
+                        }
+                      }}
+                      onMouseLeave={(e) => {
+                        if (!on) {
+                          const el = e.currentTarget
+                          el.style.background = 'rgba(255,255,255,.07)'
+                          el.style.borderColor = 'rgba(255,255,255,.12)'
+                        }
+                      }}
+                    >
+                      {label}
+                    </button>
+                  )
+                })}
               </div>
-              <label className="flex items-center gap-3 text-xs" style={{ color: 'var(--mockit-text-muted)' }}>
+              <label className="flex items-center gap-3 text-xs" style={{ color: 'rgba(255,255,255,.5)' }}>
                 <span className="w-12 shrink-0 tabular-nums">
                   {Math.round((cameraRoll * 180) / Math.PI)}°
                 </span>
@@ -498,13 +780,16 @@ export default function App() {
                   step={1}
                   value={Math.round((cameraRoll * 180) / Math.PI)}
                   onChange={(e) => setCameraRoll((Number(e.target.value) * Math.PI) / 180)}
-                  className="min-w-0 flex-1 accent-[var(--mockit-accent-bright)]"
+                  className="min-w-0 flex-1 accent-[var(--accent)]"
                 />
               </label>
             </Field>
 
             <Field label="Device rotation">
-              <p className="mb-2 font-script text-[0.95rem] leading-snug opacity-80" style={{ color: 'var(--mockit-script)' }}>
+              <p
+                className="mb-2 leading-snug"
+                style={{ font: '400 13px/1.45 var(--font-sans)', color: 'rgba(255,255,255,.45)' }}
+              >
                 Euler XYZ for device {devices.findIndex((d) => d.id === activeDeviceId) + 1}. Left-drag to adjust; Shift+drag for Z.
               </p>
               {(
@@ -520,13 +805,13 @@ export default function App() {
                   <label
                     key={axis}
                     className="mb-3 flex flex-col gap-1 text-xs last:mb-0"
-                    style={{ color: 'var(--mockit-text-muted)' }}
+                    style={{ color: 'rgba(255,255,255,.5)' }}
                   >
                     <span>
-                      <span className="font-medium" style={{ color: 'var(--mockit-text)' }}>
+                      <span style={{ color: 'rgba(255,255,255,.9)', fontWeight: 500 }}>
                         {title}
                       </span>
-                      <span className="opacity-80"> — {hint}</span>
+                      <span style={{ color: 'rgba(255,255,255,.45)' }}> — {hint}</span>
                     </span>
                     <span className="flex items-center gap-3">
                       <span className="w-12 shrink-0 tabular-nums">{deg}°</span>
@@ -543,7 +828,7 @@ export default function App() {
                             (Number(e.target.value) * Math.PI) / 180,
                           )
                         }
-                        className="min-w-0 flex-1 accent-[var(--mockit-accent-bright)]"
+                        className="min-w-0 flex-1 accent-[var(--accent)]"
                       />
                     </span>
                   </label>
@@ -552,8 +837,23 @@ export default function App() {
               <button
                 type="button"
                 onClick={() => resetDeviceRotation(activeDevice.id)}
-                className="mt-2 rounded-lg border px-2.5 py-1 text-xs transition border-[color-mix(in_srgb,var(--mockit-text)_18%,transparent)] hover:border-[var(--mockit-accent)]/50"
-                style={{ color: 'var(--mockit-text-muted)' }}
+                style={{
+                  background: 'rgba(255,255,255,.07)',
+                  border: '1px solid rgba(255,255,255,.12)',
+                  color: 'rgba(255,255,255,.65)',
+                  borderRadius: 'var(--radius-sm)',
+                }}
+                className="mt-2 px-2.5 py-1 text-xs transition"
+                onMouseEnter={(e) => {
+                  const el = e.currentTarget
+                  el.style.background = 'rgba(255,255,255,.12)'
+                  el.style.borderColor = 'rgba(255,255,255,.25)'
+                }}
+                onMouseLeave={(e) => {
+                  const el = e.currentTarget
+                  el.style.background = 'rgba(255,255,255,.07)'
+                  el.style.borderColor = 'rgba(255,255,255,.12)'
+                }}
               >
                 Reset XYZ
               </button>
@@ -561,8 +861,13 @@ export default function App() {
 
             <div className="pt-1">
               <p
-                className="mb-2 text-[10px] font-semibold uppercase tracking-[0.22em]"
-                style={{ color: 'var(--mockit-text-muted)' }}
+                className="mb-2"
+                style={{
+                  font: '600 10px/1 var(--font-sans)',
+                  letterSpacing: '0.08em',
+                  textTransform: 'uppercase',
+                  color: 'rgba(255,255,255,.4)',
+                }}
               >
                 Export resolution
               </p>
@@ -577,24 +882,48 @@ export default function App() {
                         setExportPreset(id)
                         setExportError(null)
                       }}
-                      className={`rounded-lg border px-2 py-2 text-xs transition ${
-                        on
-                          ? 'border-[var(--mockit-accent-bright)] bg-[var(--mockit-accent)]/15 text-[var(--mockit-text)]'
-                          : 'border-[color-mix(in_srgb,var(--mockit-text)_18%,transparent)] hover:border-[var(--mockit-accent)]/50'
-                      }`}
+                      style={on ? {
+                        background: 'rgba(110,75,255,.25)',
+                        border: '1px solid var(--accent)',
+                        color: '#fff',
+                        borderRadius: 'var(--radius-sm)',
+                      } : {
+                        background: 'rgba(255,255,255,.07)',
+                        border: '1px solid rgba(255,255,255,.12)',
+                        color: 'rgba(255,255,255,.65)',
+                        borderRadius: 'var(--radius-sm)',
+                      }}
+                      className="px-2 py-2 text-xs transition"
+                      onMouseEnter={(e) => {
+                        if (!on) {
+                          const el = e.currentTarget
+                          el.style.background = 'rgba(255,255,255,.12)'
+                          el.style.borderColor = 'rgba(255,255,255,.25)'
+                        }
+                      }}
+                      onMouseLeave={(e) => {
+                        if (!on) {
+                          const el = e.currentTarget
+                          el.style.background = 'rgba(255,255,255,.07)'
+                          el.style.borderColor = 'rgba(255,255,255,.12)'
+                        }
+                      }}
                     >
                       {label}
                     </button>
                   )
                 })}
               </div>
-              <p className="mb-3 text-[11px] leading-snug opacity-80" style={{ color: 'var(--mockit-text-muted)' }}>
+              <p
+                className="mb-3 leading-snug"
+                style={{ font: '400 11px/1.45 var(--font-sans)', color: 'rgba(255,255,255,.45)' }}
+              >
                 {EXPORT_PRESETS.find((p) => p.id === exportPreset)?.hint}. Same framing as the viewport; lossless PNG.
               </p>
               <div className="mb-3 flex items-center justify-between gap-3">
-                <span className="text-xs" style={{ color: 'var(--mockit-text-muted)' }}>
+                <span style={{ font: '400 12px/1.4 var(--font-sans)', color: 'rgba(255,255,255,.65)' }}>
                   No background
-                  <span className="mt-0.5 block text-[10px] leading-snug opacity-80">
+                  <span className="mt-0.5 block" style={{ font: '400 10px/1.4 var(--font-sans)', color: 'rgba(255,255,255,.4)' }}>
                     Transparent PNG (no solid color)
                   </span>
                 </span>
@@ -617,10 +946,14 @@ export default function App() {
                 type="button"
                 onClick={exportPNG}
                 disabled={exporting}
-                className="w-full cursor-pointer rounded-xl py-3.5 text-[15px] font-bold tracking-wide text-slate-900 italic transition enabled:hover:brightness-110 disabled:opacity-50"
+                className="w-full cursor-pointer py-3.5 transition enabled:hover:brightness-110 disabled:opacity-50"
                 style={{
-                  background: 'var(--mockit-accent-bright)',
-                  boxShadow: '0 0 28px rgba(34, 211, 238, 0.28)',
+                  background: 'var(--accent)',
+                  color: '#fff',
+                  borderRadius: 'var(--radius)',
+                  boxShadow: '0 6px 20px -6px var(--accent-glow), inset 0 1px 0 rgba(255,255,255,.25)',
+                  font: '600 15px/1 var(--font-sans)',
+                  border: 'none',
                 }}
               >
                 {exporting ? 'Exporting…' : 'Export PNG'}
@@ -630,7 +963,10 @@ export default function App() {
                   {exportError}
                 </p>
               )}
-              <p className="mt-2 font-script text-center text-[0.95rem] opacity-70" style={{ color: 'var(--mockit-script)' }}>
+              <p
+                className="mt-2 text-center"
+                style={{ font: '400 12px/1 var(--font-sans)', color: 'rgba(255,255,255,.4)' }}
+              >
                 No watermark — reframe before export
               </p>
             </div>
@@ -720,8 +1056,13 @@ function Field({ label, children }: { label: string; children: React.ReactNode }
   return (
     <div>
       <h2
-        className="mb-2 text-[10px] font-semibold uppercase tracking-[0.22em]"
-        style={{ color: 'var(--mockit-text-muted)' }}
+        className="mb-2"
+        style={{
+          font: '600 11px/1 var(--font-sans)',
+          letterSpacing: '0.08em',
+          textTransform: 'uppercase',
+          color: 'rgba(255,255,255,.4)',
+        }}
       >
         {label}
       </h2>
@@ -750,10 +1091,14 @@ function ColorRow({
             onClick={() => onChange(s)}
             className={`h-8 w-8 rounded-full border-2 transition ${
               selected
-                ? 'scale-105 border-[var(--mockit-accent-bright)] shadow-[0_0_14px_rgba(34,211,238,0.4)]'
-                : 'border-[color-mix(in_srgb,var(--mockit-text)_22%,transparent)] hover:border-[var(--mockit-accent)]/55'
+                ? 'scale-105'
+                : ''
             }`}
-            style={{ background: s }}
+            style={{
+              background: s,
+              borderColor: selected ? 'var(--accent)' : 'rgba(255,255,255,.22)',
+              boxShadow: selected ? '0 0 14px rgba(110,75,255,.5)' : undefined,
+            }}
             aria-label={`Color ${s}`}
           />
         )

@@ -32,7 +32,7 @@ function makeDevice(positionX = 0): DeviceInstance {
     screenshot: null,
     screenLoadError: null,
     deviceKind: 'phone',
-    deviceColor: '#bfbdb8',
+    deviceColor: '#DFCEEA',
     deviceRotation: [0, 0, 0],
     positionX,
     positionY: 0,
@@ -48,7 +48,7 @@ type State = {
   cameraRoll: number
   cameraPanFree: boolean
   orbitDistance: number
-  captureSceneAtSize: null | ((width: number, height: number, opts?: { transparent?: boolean }) => string)
+  captureSceneAtSize: null | ((width: number, height: number, opts?: { transparent?: boolean; bgCss?: string }) => string)
   deviceDragMode: 'rotate' | 'move'
   setDeviceDragMode: (m: 'rotate' | 'move') => void
   addDevice: (kind?: DeviceKind) => void
@@ -74,7 +74,7 @@ const firstDevice = makeDevice(0)
 export const useStore = create<State>((set) => ({
   devices: [firstDevice],
   activeDeviceId: firstDevice.id,
-  bgColor: '#0a0a0a',
+  bgColor: '#ffffff',
   autoRotate: true,
   uiTheme: 'dark',
   cameraRoll: 0,

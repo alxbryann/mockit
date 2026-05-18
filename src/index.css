@@ -1,5 +1,36 @@
 @import "tailwindcss";
 
+/* ── Glass design system tokens ────────────────────────────── */
+:root {
+  --bg:        #f4ecff;
+  --bg-2:      #ffefe7;
+  --surface:   rgba(255,255,255,.55);
+  --surface-2: rgba(255,255,255,.75);
+  --border:    rgba(255,255,255,.6);
+  --border-2:  rgba(0,0,0,.06);
+  --fg:        #1d1235;
+  --fg-2:      rgba(29,18,53,.66);
+  --fg-3:      rgba(29,18,53,.42);
+  --accent:      #6e4bff;
+  --accent-ink:  #ffffff;
+  --accent-2:    #ff7eb6;
+  --accent-3:    #4dd6c0;
+  --accent-glow: rgba(110,75,255,.35);
+  --danger:      #ff5470;
+  --warn:        #ffb547;
+  --radius-sm: 10px;
+  --radius:    18px;
+  --radius-lg: 28px;
+  --shadow-1: 0 1px 0 rgba(255,255,255,.9) inset, 0 4px 14px rgba(110,75,255,.08);
+  --shadow-2: 0 30px 60px -20px rgba(110,75,255,.25), 0 0 0 1px rgba(255,255,255,.7) inset;
+  --font-sans:    'Manrope', ui-sans-serif, system-ui, sans-serif;
+  --font-mono:    'JetBrains Mono', ui-monospace, monospace;
+  --font-display: 'Manrope', ui-sans-serif, system-ui, sans-serif;
+  --letter-tight:   -0.02em;
+  --letter-display: -0.045em;
+  --gutter: 80px;
+}
+
 html[data-theme="dark"],
 html[data-theme="dark"] body,
 html[data-theme="dark"] #root {
@@ -60,16 +91,11 @@ body,
   width: 44px;
   height: 24px;
   border-radius: 9999px;
-  background: rgba(56, 189, 248, 0.2);
-  border: 1px solid rgba(56, 189, 248, 0.35);
+  background: rgba(110, 75, 255, 0.2);
+  border: 1px solid rgba(110, 75, 255, 0.35);
   position: relative;
   flex-shrink: 0;
   transition: background 0.2s, border-color 0.2s;
-}
-
-html[data-theme="light"] .mockit-toggle {
-  background: rgba(14, 165, 233, 0.15);
-  border-color: rgba(14, 165, 233, 0.35);
 }
 
 .mockit-toggle-thumb {
@@ -79,8 +105,8 @@ html[data-theme="light"] .mockit-toggle {
   width: 18px;
   height: 18px;
   border-radius: 9999px;
-  background: var(--mockit-accent-bright);
-  box-shadow: 0 0 12px rgba(34, 211, 238, 0.55);
+  background: var(--accent);
+  box-shadow: 0 0 12px rgba(110, 75, 255, 0.55);
   transition: transform 0.2s ease;
 }
 
@@ -88,6 +114,38 @@ html[data-theme="light"] .mockit-toggle {
   transform: translateX(20px);
 }
 
-html[data-theme="light"] .mockit-toggle-thumb {
-  box-shadow: 0 0 10px rgba(6, 182, 212, 0.45);
+@keyframes mockit-spin {
+  to { transform: rotate(360deg); }
+}
+
+@keyframes mockit-fade-out {
+  from { opacity: 1; }
+  to   { opacity: 0; }
+}
+
+.mockit-spinner {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  border: 2px solid rgba(110, 75, 255, 0.15);
+  border-top-color: #6e4bff;
+  animation: mockit-spin 0.85s linear infinite;
+}
+
+.mockit-loading-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 200;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 20px;
+  background: #09060f;
+  transition: opacity 0.55s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.mockit-loading-overlay[data-hidden="true"] {
+  opacity: 0;
+  pointer-events: none;
 }

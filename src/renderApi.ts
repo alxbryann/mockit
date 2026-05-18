@@ -6,8 +6,17 @@ import * as THREE from 'three'
 import { captureSceneToPngDataUrl } from './highResCapture'
 import { useStore } from './store'
 
-export type RenderMockupOpts = {
+export type RenderMockupDevice = {
+  kind?: 'phone' | 'mac'
   imageDataUrl: string
+  deviceColor?: string
+  deviceRotation?: [number, number, number]
+  positionX?: number
+  positionY?: number
+}
+
+export type RenderMockupOpts = {
+  imageDataUrl?: string
   deviceColor?: string
   bgColor?: string
   width?: number
@@ -18,6 +27,8 @@ export type RenderMockupOpts = {
   camera_offset_x?: number
   /** Adds to camera Y before lookAt(origin). Negative ≈ lower camera (contrapicado / “hero” angle like stock mockups). */
   camera_offset_y?: number
+  /** Multi-device scene. Overrides single-device fields when provided. */
+  devices?: RenderMockupDevice[]
 }
 
 function waitFrames(n: number): Promise<void> {
@@ -39,17 +50,41 @@ function waitFrames(n: number): Promise<void> {
   // Stop auto-rotate so the device stays at the exact angle we set
   store.setAutoRotate(false)
 
-  // Ensure at least one device exists
-  if (store.devices.length === 0) store.addDevice()
-  const deviceId = useStore.getState().devices[0].id
+  // Build the device list — multi-device wins, otherwise synthesize a single device from top-level fields.
+  const requested: RenderMockupDevice[] =
+    opts.devices && opts.devices.length > 0
+      ? opts.devices
+      : [
+          {
+            kind: 'phone',
+            imageDataUrl: opts.imageDataUrl ?? '',
+            deviceColor: opts.deviceColor,
+            deviceRotation: opts.deviceRotation,
+          },
+        ]
 
-  // Apply parameters to the first device
-  useStore.getState().updateDevice(deviceId, {
-    deviceKind: 'phone',
-    screenshot: opts.imageDataUrl,
-    ...(opts.deviceColor ? { deviceColor: opts.deviceColor } : {}),
-    ...(opts.deviceRotation ? { deviceRotation: opts.deviceRotation } : {}),
+  // Match scene device count to requested count. removeDevice keeps min 1, so the floor is fine.
+  while (useStore.getState().devices.length > requested.length) {
+    const list = useStore.getState().devices
+    useStore.getState().removeDevice(list[list.length - 1].id)
+  }
+  while (useStore.getState().devices.length < requested.length) {
+    useStore.getState().addDevice(requested[useStore.getState().devices.length].kind ?? 'phone')
+  }
+
+  // Apply each device's config
+  requested.forEach((cfg, i) => {
+    const id = useStore.getState().devices[i].id
+    useStore.getState().updateDevice(id, {
+      deviceKind: cfg.kind ?? 'phone',
+      screenshot: cfg.imageDataUrl,
+      ...(cfg.deviceColor ? { deviceColor: cfg.deviceColor } : {}),
+      ...(cfg.deviceRotation ? { deviceRotation: cfg.deviceRotation } : {}),
+      ...(typeof cfg.positionX === 'number' ? { positionX: cfg.positionX } : {}),
+      ...(typeof cfg.positionY === 'number' ? { positionY: cfg.positionY } : {}),
+    })
   })
+
   if (opts.bgColor) store.setBgColor(opts.bgColor)
 
   // Wait for React to reconcile + Three.js to render the new state.
