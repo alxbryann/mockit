@@ -1,3 +1,5 @@
+import { useState } from 'react'
+
 type Props = { onEnter: () => void }
 
 const Logo = () => (
@@ -140,14 +142,19 @@ function MacShape() {
 }
 
 export default function Landing({ onEnter }: Props) {
+  const [menuOpen, setMenuOpen] = useState(false)
+
   return (
-    <div style={{
-      minHeight: '100vh',
-      fontFamily: 'var(--font-sans)',
-      color: 'var(--fg)',
-      WebkitFontSmoothing: 'antialiased',
-      position: 'relative',
-    }}>
+    <div
+      className="landing"
+      style={{
+        minHeight: '100vh',
+        fontFamily: 'var(--font-sans)',
+        color: 'var(--fg)',
+        WebkitFontSmoothing: 'antialiased',
+        position: 'relative',
+      }}
+    >
       {/* Fixed background covers entire viewport at all scroll depths */}
       <div style={{
         position: 'fixed', inset: 0, zIndex: -1,
@@ -161,18 +168,9 @@ export default function Landing({ onEnter }: Props) {
       }} />
 
       {/* ── Nav ── */}
-      <nav style={{
-        position: 'sticky', top: 0, zIndex: 50,
-        padding: '0 var(--gutter)',
-        height: 60,
-        display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-        background: 'rgba(255,255,255,.5)',
-        WebkitBackdropFilter: 'blur(20px) saturate(160%)',
-        backdropFilter: 'blur(20px) saturate(160%)',
-        borderBottom: '1px solid var(--border)',
-      }}>
+      <nav className="landing-nav">
         <Logo />
-        <div style={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+        <div className="landing-nav-links">
           {navLinks.map(l => (
             <button key={l} style={{
               padding: '6px 12px', border: 'none', background: 'transparent',
@@ -184,14 +182,25 @@ export default function Landing({ onEnter }: Props) {
             >{l}</button>
           ))}
         </div>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-          <button style={{
-            padding: '8px 16px', border: '1px solid var(--border-2)',
-            background: 'var(--surface)', borderRadius: 999,
-            font: '500 14px/1 var(--font-sans)', color: 'var(--fg)',
-            cursor: 'pointer',
-            WebkitBackdropFilter: 'blur(12px)', backdropFilter: 'blur(12px)',
-          }}>Sign in</button>
+        <div className="landing-nav-ctas">
+          <button type="button" className="landing-nav-signin">Sign in</button>
+          <button
+            type="button"
+            className="landing-nav-menu-btn"
+            aria-label={menuOpen ? 'Close menu' : 'Open menu'}
+            aria-expanded={menuOpen ? 'true' : 'false'}
+            onClick={() => setMenuOpen((o) => !o)}
+          >
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden>
+              {menuOpen ? (
+                <path d="M6 6l12 12M18 6L6 18" strokeLinecap="round" />
+              ) : (
+                <>
+                  <path d="M4 7h16M4 12h16M4 17h16" strokeLinecap="round" />
+                </>
+              )}
+            </svg>
+          </button>
           <button onClick={onEnter} style={{
             padding: '8px 18px', border: 'none',
             background: 'var(--accent)', borderRadius: 999,
@@ -200,22 +209,23 @@ export default function Landing({ onEnter }: Props) {
             boxShadow: '0 4px 14px -4px var(--accent-glow)',
             display: 'flex', alignItems: 'center', gap: 5,
             transition: 'filter .15s ease, transform .15s ease',
+            whiteSpace: 'nowrap',
           }}
           onMouseEnter={e => { e.currentTarget.style.filter = 'brightness(1.08)'; e.currentTarget.style.transform = 'translateY(-1px)' }}
           onMouseLeave={e => { e.currentTarget.style.filter = ''; e.currentTarget.style.transform = '' }}
           >Open studio <span style={{ fontSize: 13 }}>↗</span></button>
         </div>
       </nav>
+      <div className="landing-mobile-menu" data-open={menuOpen ? 'true' : 'false'} role="navigation" aria-label="Mobile">
+        {navLinks.map(l => (
+          <button key={l} type="button" onClick={() => setMenuOpen(false)}>{l}</button>
+        ))}
+        <button type="button" onClick={() => { setMenuOpen(false); onEnter() }}>Open studio</button>
+      </div>
 
       {/* ── Hero ── */}
-      <section style={{
-        padding: '100px var(--gutter) 80px',
-        display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-        gap: 48, maxWidth: 1280, margin: '0 auto', width: '100%', boxSizing: 'border-box',
-        position: 'relative',
-      }}>
-        {/* Left */}
-        <div style={{ flex: '0 0 auto', maxWidth: 520 }}>
+      <section className="landing-hero">
+        <div className="landing-hero-copy">
           <div style={{
             display: 'inline-flex', alignItems: 'center', gap: 6,
             padding: '4px 12px', borderRadius: 999, fontSize: 13, fontWeight: 500,
@@ -237,10 +247,7 @@ export default function Landing({ onEnter }: Props) {
             <br />Made in seconds.
           </h1>
 
-          <p style={{
-            fontSize: 18, lineHeight: 1.55, color: 'var(--fg-2)',
-            letterSpacing: '-0.005em', margin: '0 0 40px', maxWidth: 440,
-          }}>
+          <p className="landing-hero-desc">
             Drag your screens into beautifully lit iPhones and Macs.
             No Blender. No render queue. Just gorgeous mockups in a tab.
           </p>
@@ -259,11 +266,7 @@ export default function Landing({ onEnter }: Props) {
           >Start a mockup →</button>
         </div>
 
-        {/* Right — device cluster */}
-        <div style={{
-          flex: '1 1 auto', display: 'flex', alignItems: 'center', justifyContent: 'center',
-          position: 'relative', minHeight: 420,
-        }}>
+        <div className="landing-hero-devices">
           {/* Glow blobs behind devices */}
           <div style={{
             position: 'absolute', width: 340, height: 340, borderRadius: '50%',
@@ -289,25 +292,18 @@ export default function Landing({ onEnter }: Props) {
         </div>
       </section>
 
-      {/* ── Logos ── */}
-      <div style={{
-        borderTop: '1px solid var(--border-2)', borderBottom: '1px solid var(--border-2)',
-        padding: '24px var(--gutter)',
-        display: 'flex', alignItems: 'center', gap: 48,
-        maxWidth: 1280, margin: '0 auto', width: '100%', boxSizing: 'border-box',
-      }}>
+      <div className="landing-logos">
         <span style={{ fontSize: 11, fontWeight: 500, letterSpacing: '0.08em', color: 'var(--fg-3)', whiteSpace: 'nowrap', textTransform: 'uppercase' }}>
           Trusted by teams at
         </span>
-        <div style={{ display: 'flex', gap: 40, alignItems: 'center', flex: 1, flexWrap: 'wrap' }}>
+        <div className="landing-logos-list">
           {logos.map(l => (
             <span key={l} style={{ fontSize: 15, fontWeight: 600, color: 'var(--fg-3)', letterSpacing: '-0.01em' }}>{l}</span>
           ))}
         </div>
       </div>
 
-      {/* ── Features ── */}
-      <section style={{ padding: '100px var(--gutter)', maxWidth: 1280, margin: '0 auto', width: '100%', boxSizing: 'border-box' }}>
+      <section className="landing-section">
         <div style={{ marginBottom: 56 }}>
           <div style={{
             display: 'inline-flex', alignItems: 'center', gap: 6,
@@ -324,7 +320,7 @@ export default function Landing({ onEnter }: Props) {
           </h2>
         </div>
 
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 20 }}>
+        <div className="landing-features-grid">
           {features.map(f => (
             <div key={f.title}
               style={{
@@ -358,9 +354,8 @@ export default function Landing({ onEnter }: Props) {
         </div>
       </section>
 
-      {/* ── Gallery ── */}
-      <section style={{ padding: '0 var(--gutter) 100px', maxWidth: 1280, margin: '0 auto', width: '100%', boxSizing: 'border-box' }}>
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 36 }}>
+      <section className="landing-gallery-section">
+        <div className="landing-gallery-header">
           <h2 style={{ fontFamily: 'var(--font-display)', fontWeight: 700, fontSize: 'clamp(28px, 3vw, 44px)', letterSpacing: '-0.04em', margin: 0, color: 'var(--fg)' }}>
             See it in action
           </h2>
@@ -372,20 +367,9 @@ export default function Landing({ onEnter }: Props) {
             WebkitBackdropFilter: 'blur(12px)', backdropFilter: 'blur(12px)',
           }}>Explore gallery →</button>
         </div>
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 20 }}>
+        <div className="landing-gallery-grid">
           {gallery.map(g => (
-            <div key={g.handle}
-              style={{
-                borderRadius: 'var(--radius-lg)',
-                background: '#0a0614',
-                height: 340,
-                position: 'relative', overflow: 'hidden',
-                boxShadow: 'var(--shadow-1)',
-                transition: 'transform .2s ease',
-              }}
-              onMouseEnter={e => (e.currentTarget.style.transform = 'translateY(-4px)')}
-              onMouseLeave={e => (e.currentTarget.style.transform = '')}
-            >
+            <div key={g.handle} className="landing-gallery-card">
               <img
                 src={g.img}
                 alt={`Mockup by ${g.handle}`}
@@ -410,21 +394,8 @@ export default function Landing({ onEnter }: Props) {
         </div>
       </section>
 
-      {/* ── Final CTA ── */}
-      <section style={{
-        padding: '0 var(--gutter) 120px',
-        display: 'flex', flexDirection: 'column', alignItems: 'center', textAlign: 'center',
-      }}>
-        <div style={{
-          background: 'var(--surface)',
-          WebkitBackdropFilter: 'blur(24px) saturate(160%)',
-          backdropFilter: 'blur(24px) saturate(160%)',
-          border: '1px solid var(--border)',
-          borderRadius: 'var(--radius-lg)',
-          boxShadow: 'var(--shadow-2)',
-          padding: '72px 80px',
-          maxWidth: 720, width: '100%',
-        }}>
+      <section className="landing-cta-section">
+        <div className="landing-cta-card">
           <h2 style={{
             fontFamily: 'var(--font-display)', fontWeight: 700,
             fontSize: 'clamp(36px, 4vw, 60px)', letterSpacing: '-0.04em', lineHeight: 1.02,
@@ -435,7 +406,7 @@ export default function Landing({ onEnter }: Props) {
           <p style={{ fontSize: 17, lineHeight: 1.55, color: 'var(--fg-2)', margin: '0 0 40px' }}>
             Free while in beta. No card, no email gate. Just open the studio and drop a screen.
           </p>
-          <div style={{ display: 'flex', gap: 12, justifyContent: 'center' }}>
+          <div className="landing-cta-actions">
             <button onClick={onEnter} style={{
               display: 'inline-flex', alignItems: 'center', gap: 8,
               padding: '14px 24px', borderRadius: 999, border: 'none',
@@ -461,15 +432,9 @@ export default function Landing({ onEnter }: Props) {
         </div>
       </section>
 
-      {/* ── Footer ── */}
-      <footer style={{
-        borderTop: '1px solid var(--border-2)',
-        padding: '28px var(--gutter)',
-        display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-        maxWidth: 1280, margin: '0 auto', width: '100%', boxSizing: 'border-box',
-      }}>
+      <footer className="landing-footer">
         <Logo />
-        <span style={{ fontSize: 13, color: 'var(--fg-3)' }}>Built with care in Berlin &amp; Bogotá</span>
+        <span style={{ fontSize: 13, color: 'var(--fg-3)' }}>Built with care in Bogotá</span>
       </footer>
     </div>
   )
